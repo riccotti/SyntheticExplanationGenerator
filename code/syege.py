@@ -157,7 +157,7 @@ def main():
 
     expr = slc['expr']
     X = slc['X']
-    Y = slc['Y']
+    Y = slc['Y'] # pippo
 
     X_test = np.random.uniform(np.min(X), np.max(X), size=(n, m))
 
