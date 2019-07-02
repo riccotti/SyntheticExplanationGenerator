@@ -7,9 +7,10 @@ from sympy import diff, re
 from scipy.spatial.distance import cdist
 from sklearn.datasets import make_classification
 
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
 
 from rule import get_rule
 from symexpr import generate_expression, gen_classification_symbolic, eval_multinomial
@@ -40,6 +41,14 @@ def generate_syntetic_rule_based_classifier(n_features=2, n_all_features=2, rand
     class_name = 'class'
     class_values = [i for i in range(2)]
 
+    def predict_proba(X):
+        X = X[:, :n_features]
+        return dt.predict_proba(X)
+
+    def predict(X):
+        X = X[:, :n_features]
+        return dt.predict(X)
+
     srbc = {
         'dt': dt,
         'ff': ff,
@@ -47,7 +56,9 @@ def generate_syntetic_rule_based_classifier(n_features=2, n_all_features=2, rand
         'Y': Y_new,
         'feature_names': feature_names,
         'class_name': class_name,
-        'class_values': class_values
+        'class_values': class_values,
+        'predict_proba': predict_proba,
+        'predict': predict
     }
 
     return srbc
@@ -76,29 +87,69 @@ def get_rule_explanation(x, srbc, n_features, get_values=False):
             val = rule_premise[feature] if feature in rule_premise else 0.0
             explanation.append(val)
 
+    explanation = np.array(explanation)
+
     return explanation
 
 
-def generate_synthetic_linear_classifier(n_features=2, n_all_features=2, random_state=1, n_samples=1000,
+def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features=2, random_state=1, n_samples=1000,
                                          num_operations=10, p_binary=0.7, p_parenthesis=0.3):
-    np.random.seed(random_state)
+    feature_names = None
+    if expr is None:
+        np.random.seed(random_state)
 
-    feature_names = ['x%s' % i for i in range(n_all_features)]
-    scope = feature_names[:n_features]
+        feature_names = ['x%s' % i for i in range(n_all_features)]
+        scope = feature_names[:n_features]
 
-    while True:
-        expr = generate_expression(scope, num_operations=num_operations,
-                                   p_binary=p_binary, p_parenthesis=p_parenthesis)
-        if np.sum([1 if expr.count(f) > 0 else 0 for f in scope]) == n_features:
-            break
+        while True:
+            expr = generate_expression(scope, num_operations=num_operations,
+                                       p_binary=p_binary, p_parenthesis=p_parenthesis)
+            if np.sum([1 if expr.count(f) > 0 else 0 for f in scope]) == n_features:
+                break
 
-    X = gen_classification_symbolic(expr=expr, n_samples=n_samples, flip_y=0.0)
+    X = gen_classification_symbolic(expr, n_samples=n_samples, flip_y=0.0)
+    class_name = 'class'
+    class_values = [i for i in range(2)]
+
+    def predict_proba(X):
+        X = X[:, :n_features]
+        evals = list()
+        for x in X:
+            evals.append(re(eval_multinomial(expr, vals=list(x))))
+        evals = np.array(evals)
+        evals = np.array(evals, dtype=np.float)
+        evals_binary = evals > 0
+        evals_binary = evals_binary.flatten()
+        evals_binary = np.array(evals_binary, dtype=int)
+
+        evals0 = evals[evals_binary == 0]
+        evals1 = evals[evals_binary == 1]
+
+        mm0 = MinMaxScaler(feature_range=(0, 0.5))
+        mm0.fit(evals0.reshape(-1, 1))
+        mm1 = MinMaxScaler(feature_range=(0.5, 1.0))
+        mm1.fit(evals1.reshape(-1, 1))
+
+        evals_scaled = list()
+        for x, y in zip(evals, evals_binary):
+            if y == 0:
+                val = mm0.transform(x.reshape(-1, 1))[0][0]
+            else:
+                val = mm1.transform(x.reshape(-1, 1))[0][0]
+            val = max(0.0, min(val, 1.0))
+            evals_scaled.append([1.0 - val, val])
+
+        evals_scaled = np.array(evals_scaled)
+        return evals_scaled
 
     slc = {
         'expr': expr,
         'X': X[:, :-1],
         'Y': X[:, -1],
         'feature_names': feature_names,
+        'class_name': class_name,
+        'class_values': class_values,
+        'predict_proba': predict_proba
     }
 
     return slc
@@ -135,7 +186,9 @@ def get_feature_importance_explanation(x, slc, n_features, get_values=True):
 
     for i in range(n_features, len(feature_names)):
         val = 0.0 if get_values else 0
-        explanation.append(0.0)
+        explanation.append(val)
+
+    explanation = np.array(explanation)
 
     return explanation
 
@@ -145,23 +198,29 @@ def main():
     m = 5
     n = 10
 
-    n_features = 3
+    n_features = 2
     random_state = 1
 
     num_operations = 10
     p_binary = 0.7
     p_parenthesis = 0.3
 
-    slc = generate_synthetic_linear_classifier(n_features=n_features, n_all_features=m, random_state=random_state,
-                                               num_operations=num_operations, p_binary=p_binary, p_parenthesis=p_parenthesis)
+    # slc = generate_synthetic_linear_classifier(n_features=n_features, n_all_features=m, random_state=random_state,
+    #                                            num_operations=num_operations, p_binary=p_binary, p_parenthesis=p_parenthesis)
+
+    slc = generate_synthetic_linear_classifier(expr='x0**2+x1/2', n_features=n_features, n_all_features=m,
+                                               random_state=random_state, num_operations=num_operations,
+                                               p_binary=p_binary, p_parenthesis=p_parenthesis)
 
     expr = slc['expr']
     X = slc['X']
-    Y = slc['Y'] # pippo
+    Y = slc['Y']
+    if slc['feature_names'] is None:
+        slc['feature_names'] = ['x%s' % i for i in range(m)]
 
     X_test = np.random.uniform(np.min(X), np.max(X), size=(n, m))
 
-    print(expr)
+
     # plt.scatter(X[:, 0], X[:, 1], c=Y)
     # plt.show()
 
@@ -218,8 +277,8 @@ def main():
     # plt.show()
 
     # for x in X_test:
-    #     expl_bin = get_rule_explanation(x, srbc, n_features, get_thresholds=False)
-    #     expl_val = get_rule_explanation(x, srbc, n_features, get_thresholds=True)
+    #     expl_bin = get_rule_explanation(x, srbc, n_features, get_values=False)
+    #     expl_val = get_rule_explanation(x, srbc, n_features, get_values=True)
     #     print(x, expl_bin, expl_val)
 
 

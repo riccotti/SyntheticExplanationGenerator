@@ -75,7 +75,7 @@ def flip(y, p):
     return np.array(np.logical_xor(y, lst), dtype=int)
 
 
-def gen_classification_symbolic(expr=None, n_samples=100, n_features=2, flip_y=0.0):
+def gen_classification_symbolic(expr, n_samples=100, flip_y=0.0):
     """
     Generates classification sample based on a symbolic expression.
     Calculates the output of the symbolic expression at randomly generated (Gaussian distribution) points and
