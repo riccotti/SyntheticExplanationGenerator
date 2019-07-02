@@ -107,9 +107,20 @@ def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features
             if np.sum([1 if expr.count(f) > 0 else 0 for f in scope]) == n_features:
                 break
 
-    X = gen_classification_symbolic(expr, n_samples=n_samples, flip_y=0.0)
+    X, Y, Y1 = gen_classification_symbolic(expr, n_samples=n_samples, flip_y=0.0)
     class_name = 'class'
     class_values = [i for i in range(2)]
+
+    evals = Y1
+    evals_binary = Y
+
+    evals0 = evals[evals_binary == 0]
+    evals1 = evals[evals_binary == 1]
+
+    mm0 = MinMaxScaler(feature_range=(0, 0.5))
+    mm0.fit(evals0.reshape(-1, 1))
+    mm1 = MinMaxScaler(feature_range=(0.5, 1.0))
+    mm1.fit(evals1.reshape(-1, 1))
 
     def predict_proba(X):
         X = X[:, :n_features]
@@ -121,14 +132,6 @@ def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features
         evals_binary = evals > 0
         evals_binary = evals_binary.flatten()
         evals_binary = np.array(evals_binary, dtype=int)
-
-        evals0 = evals[evals_binary == 0]
-        evals1 = evals[evals_binary == 1]
-
-        mm0 = MinMaxScaler(feature_range=(0, 0.5))
-        mm0.fit(evals0.reshape(-1, 1))
-        mm1 = MinMaxScaler(feature_range=(0.5, 1.0))
-        mm1.fit(evals1.reshape(-1, 1))
 
         evals_scaled = list()
         for x, y in zip(evals, evals_binary):
@@ -144,8 +147,8 @@ def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features
 
     slc = {
         'expr': expr,
-        'X': X[:, :-1],
-        'Y': X[:, -1],
+        'X': X,
+        'Y': Y,
         'feature_names': feature_names,
         'class_name': class_name,
         'class_values': class_values,

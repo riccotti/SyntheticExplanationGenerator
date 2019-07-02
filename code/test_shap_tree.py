@@ -1,6 +1,6 @@
 import numpy as np
 
-from anchor.anchor_tabular import AnchorTabularExplainer
+from shap import TreeExplainer
 
 
 from syege import get_rule_explanation
@@ -9,10 +9,10 @@ from evaluation import rule_based_similarity
 
 
 def main():
-    m = 10
+    m = 5
     n = 10
 
-    n_features = 5
+    n_features = 2
     random_state = 1
 
     factor = 10
@@ -22,21 +22,18 @@ def main():
                                                    factor=factor, sampling=sampling)
 
     X = srbc['X']
-    feature_names = srbc['feature_names']
-    class_values = srbc['class_values']
+    dt = srbc['dt']
     predict_proba = srbc['predict_proba']
-    predict = srbc['predict']
 
     X_test = np.random.uniform(np.min(X), np.max(X), size=(n, m))
     Y_test = predict_proba(X_test)
 
-    explainer = AnchorTabularExplainer(class_names=class_values, feature_names=feature_names, categorical_names={})
-    explainer.fit(X_test, Y_test, X_test, Y_test)
+    explainer = TreeExplainer(dt)
 
     for i, x in enumerate(X_test):
         print(x)
-        exp = explainer.explain_instance(x, predict, threshold=0.95)
-        expl_val = np.array([1 if e in exp.features() else 0 for e in range(m)])
+        shap_values = explainer.shap_values(x)[1]
+        expl_val = np.array([1 if e != 0.0 else 0 for e in shap_values])
         gt_val = get_rule_explanation(x, srbc, n_features, get_values=False)
         rbs = rule_based_similarity(expl_val, gt_val)
         print(expl_val)
@@ -46,6 +43,8 @@ def main():
         if i == 10:
             break
 
+
 if __name__ == "__main__":
     main()
+
 

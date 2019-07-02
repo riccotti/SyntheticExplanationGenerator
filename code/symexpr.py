@@ -107,9 +107,12 @@ def gen_classification_symbolic(expr, n_samples=100, flip_y=0.0):
     evals_binary = evals_binary.flatten()
     evals_binary = np.array(evals_binary, dtype=int)
     evals_binary = flip(evals_binary, p=flip_y)
-    evals_binary = evals_binary.reshape(n_samples, 1)
+    # evals_binary = evals_binary.reshape(n_samples, 1)
 
-    lst_features = lst_features.reshape(n_samples, n_features)
-    X = np.hstack((lst_features, evals_binary))
+    # lst_features = lst_features.reshape(n_samples, n_features)
+    # X = np.hstack((lst_features, evals_binary))
+    X = lst_features.reshape(n_samples, n_features)
+    Y = evals_binary
+    Y1 = evals
 
-    return X
+    return X, Y, Y1
