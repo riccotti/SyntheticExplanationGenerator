@@ -1,2 +1,0 @@
-# SyntheticExplanationGenerator
-Synthetic Explanation Generator
