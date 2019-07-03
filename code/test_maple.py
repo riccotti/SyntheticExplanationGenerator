@@ -1,6 +1,6 @@
 import numpy as np
 
-from lime.lime_tabular import LimeTabularExplainer
+from MAPLE import MAPLE
 
 
 from syege import generate_synthetic_linear_classifier
@@ -12,41 +12,39 @@ def main():
     m = 5
     n = 10
 
-    n_features = 2
+    n_features = 3
     random_state = 1
 
     num_operations = 10
     p_binary = 0.7
     p_parenthesis = 0.3
 
-    slc = generate_synthetic_linear_classifier(expr='x0-x1*sin(x1)**2', n_features=n_features, n_all_features=m,
+    slc = generate_synthetic_linear_classifier(expr='x0**3-2*x1**2+3*x2', n_features=n_features, n_all_features=m,
                                                random_state=random_state, num_operations=num_operations,
                                                p_binary=p_binary, p_parenthesis=p_parenthesis)
     expr = slc['expr']
     X = slc['X']
-    if slc['feature_names'] is None:
-        slc['feature_names'] = ['x%s' % i for i in range(m)]
     feature_names = slc['feature_names']
     class_values = slc['class_values']
     predict_proba = slc['predict_proba']
+    predict = slc['predict']
 
     print(expr)
 
     X_test = np.random.uniform(np.min(X), np.max(X), size=(n, m))
+    Y_test = predict(X_test)
 
-    explainer = LimeTabularExplainer(X_test, feature_names=feature_names, class_names=class_values,
-                                     discretize_continuous=False, discretizer='entropy')
+    explainer = MAPLE(X_test, Y_test, X_test, Y_test)
 
     for x in X_test:
         print(x)
-        exp = explainer.explain_instance(x, predict_proba, num_features=m)
-        expl_val = np.array([e[1] for e in exp.as_list()])
+        exp = explainer.explain(x)
+        expl_val = exp['coefs'][:-1]
         gt_val = get_feature_importance_explanation(x, slc, n_features, get_values=True)
         fis = feature_importance_similarity(expl_val, gt_val)
         print(expl_val)
         print(gt_val)
         print(fis)
-        print('')
         break
 
 

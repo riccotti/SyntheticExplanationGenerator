@@ -145,6 +145,13 @@ def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features
         evals_scaled = np.array(evals_scaled)
         return evals_scaled
 
+    def predict(X):
+        proba = predict_proba(X)
+        return np.argmax(proba, axis=1)
+
+    if feature_names is None:
+        feature_names = ['x%s' % i for i in range(n_all_features)]
+
     slc = {
         'expr': expr,
         'X': X,
@@ -152,13 +159,14 @@ def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features
         'feature_names': feature_names,
         'class_name': class_name,
         'class_values': class_values,
-        'predict_proba': predict_proba
+        'predict_proba': predict_proba,
+        'predict': predict,
     }
 
     return slc
 
 
-def get_feature_importance_explanation(x, slc, n_features, get_values=True):
+def get_feature_importance_explanation(x, slc, n_features, get_values=True, get_closest_point=False):
 
     x = x[:n_features]
 
@@ -192,6 +200,9 @@ def get_feature_importance_explanation(x, slc, n_features, get_values=True):
         explanation.append(val)
 
     explanation = np.array(explanation)
+
+    if get_closest_point:
+        return explanation, cx
 
     return explanation
 
