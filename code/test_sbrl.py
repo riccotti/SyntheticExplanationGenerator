@@ -1,6 +1,6 @@
 import numpy as np
 
-from anchor.anchor_tabular import AnchorTabularExplainer
+from rulematrix import Surrogate
 
 
 from syege import get_rule_explanation
@@ -30,13 +30,13 @@ def main():
     X_test = np.random.uniform(np.min(X), np.max(X), size=(n, m))
     Y_test = predict_proba(X_test)
 
-    explainer = AnchorTabularExplainer(class_names=class_values, feature_names=feature_names, categorical_names={})
-    explainer.fit(X_test, Y_test, X_test, Y_test)
+    explainer = Surrogate(predict, student=None, is_continuous=None, is_categorical=None, is_integer=None,
+                          ranges=None, cov_factor=1.0, sampling_rate=2.0, seed=None, verbose=False)
+    explainer.fit(X)
 
     for i, x in enumerate(X_test):
         print(x)
-        exp = explainer.explain_instance(x, predict, threshold=0.95)
-        expl_val = np.array([1 if e in exp.features() else 0 for e in range(m)])
+        expl_val = explainer.explain(x, m)
         gt_val = get_rule_explanation(x, srbc, n_features, get_values=False)
         rbs = rule_based_similarity(expl_val, gt_val)
         print(expl_val)
