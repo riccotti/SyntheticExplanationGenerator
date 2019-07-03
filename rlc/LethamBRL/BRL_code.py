@@ -90,63 +90,59 @@
 # ##CODE:
 
 from numpy import *
-import os,time,json,traceback,sys
+import os, time, json, traceback, sys
 from scipy.special import gammaln
-from scipy.stats import poisson,beta
+from scipy.stats import poisson, beta
 import pickle as Pickle
-from collections import defaultdict,Counter
-from fim import fpgrowth #this is PyFIM, available from http://www.borgelt.net/pyfim.html
+from collections import defaultdict, Counter
+from fim import fpgrowth  # this is PyFIM, available from http://www.borgelt.net/pyfim.html
 
-try:
-    from matplotlib import pyplot as plt
-except:
-    pass 
 
 def topscript():
     fname = 'titanic'
     
-    #Prior hyperparameters
+    # Prior hyperparameters
     lbda = 3. #prior hyperparameter for expected list length (excluding null rule)
     eta = 1. #prior hyperparameter for expected list average width (excluding null rule)
     alpha = array([1.,1.]) #prior hyperparameter for multinomial pseudocounts
     
-    #rule mining parameters
-    maxlhs = 2 #maximum cardinality of an itemset
-    minsupport = 10 #minimum support (%) of an itemset
+    # rule mining parameters
+    maxlhs = 2  # maximum cardinality of an itemset
+    minsupport = 10  # minimum support (%) of an itemset
     
-    #mcmc parameters
+    # mcmc parameters
     numiters = 5000#50000 # Uncomment plot_chains in run_bdl_multichain to visually check mixing and convergence
     thinning = 1 #The thinning rate
     burnin = numiters//2 #the number of samples to drop as burn-in in-simulation
     nchains = 3 #number of MCMC chains. These are simulated in serial, and then merged after checking for convergence.
     
-    #End parameters
+    # End parameters
     
-    #Now we load data and do MCMC
+    # Now we load data and do MCMC
     permsdic = defaultdict(default_permsdic) #We will store here the MCMC results
     Xtrain,Ytrain,nruleslen,lhs_len,itemsets = get_freqitemsets(fname+'_train',minsupport,maxlhs) #Do frequent itemset mining from the training data
     Xtest,Ytest,Ylabels_test = get_testdata(fname+'_test',itemsets) #Load the demo data
     print('Data loaded!')
     
-    #Do MCMC
+    # Do MCMC
     res,Rhat = run_bdl_multichain_serial(numiters,thinning,alpha,lbda,eta,Xtrain,Ytrain,nruleslen,lhs_len,maxlhs,permsdic,burnin,nchains,[None]*nchains)
         
-    #Merge the chains
+    # Merge the chains
     permsdic = merge_chains(res)
     
-    ###The point estimate, BRL-point
+    # The point estimate, BRL-point
     d_star = get_point_estimate(permsdic,lhs_len,Xtrain,Ytrain,alpha,nruleslen,maxlhs,lbda,eta) #get the point estimate
     
     if d_star:
-        #Compute the rule consequent
+        # Compute the rule consequent
         theta, ci_theta = get_rule_rhs(Xtrain,Ytrain,d_star,alpha,True)
         
-        #Print out the point estimate rule
+        # Print out the point estimate rule
         print('antecedent risk (credible interval for risk)')
-        for i,j in enumerate(d_star):
-            print(itemsets[j],theta[i],ci_theta[i])
+        for i, j in enumerate(d_star):
+            print(itemsets[j], theta[i], ci_theta[i])
         
-        #Evaluate on the demo data
+        # Evaluate on the demo data
         preds_d_star = preds_d_t(Xtest,Ytest,d_star,theta) #Use d_star to make predictions on the demo data
         accur_d_star = preds_to_acc(preds_d_star,Ylabels_test)#Accuracy of the point estimate
         print('accuracy of point estimate',accur_d_star)
@@ -159,84 +155,113 @@ def topscript():
     return permsdic, d_star, itemsets, theta, ci_theta, preds_d_star, accur_d_star, preds_fullpost, accur_fullpost
 
 
-###############BRL
+# BRL
 
-#For producing the defaultdict used for storing MCMC results
+# For producing the defaultdict used for storing MCMC results
 def default_permsdic():
-    return [0.,0.]
+    return [0., 0.]
 
-#Resets the number of MCMC samples stored (value[1]) while maintaining the log-posterior value (so it doesn't need to be re-computed in future chains).
+
+# Resets the number of MCMC samples stored (value[1]) while maintaining the log-posterior value
+# (so it doesn't need to be re-computed in future chains).
 def reset_permsdic(permsdic):
     for perm in permsdic:
         permsdic[perm][1] = 0.
     return permsdic
 
-#Run mcmc for each of the chains, IN SERIAL!
-def run_bdl_multichain_serial(numiters,thinning,alpha,lbda,eta,X,Y,nruleslen,lhs_len,maxlhs,permsdic,burnin,nchains,d_inits,verbose=True):
-    #Run each chain 
+
+# Run mcmc for each of the chains, IN SERIAL!
+def run_bdl_multichain_serial(numiters, thinning, alpha, lbda, eta, X, Y, nruleslen, lhs_len, maxlhs, permsdic,
+                              burnin, nchains, d_inits, verbose=True):
+    # Run each chain
     t1 = time.clock()
     if verbose:
         print('Starting mcmc chains')
     res = {}
     for n in range(nchains):
-        res[n] = mcmcchain(numiters,thinning,alpha,lbda,eta,X,Y,nruleslen,lhs_len,maxlhs,permsdic,burnin,nchains,d_inits[n])
+        res[n] = mcmcchain(numiters, thinning, alpha, lbda, eta, X, Y, nruleslen, lhs_len, maxlhs, permsdic, burnin,
+                           nchains, d_inits[n])
+        # print(res[n])
         
     if verbose:
-        print('Elapsed CPU time',time.clock()-t1)
+        print('Elapsed CPU time', time.clock()-t1)
 
-    #Check convergence
+    # Check convergence
     Rhat = gelmanrubin(res)
     
     if verbose:
-        print('Rhat for convergence:',Rhat)
-    ##plot?
-    #plot_chains(res)
-    return res,Rhat
+        print('Rhat for convergence:', Rhat)
+    # plot?
+    # plot_chains(res)
+    return res, Rhat
 
-def mcmcchain(numiters,thinning,alpha,lbda,eta,X,Y,nruleslen,lhs_len,maxlhs,permsdic,burnin,nchains,d_init):
+
+def mcmcchain(numiters, thinning, alpha, lbda, eta, X, Y, nruleslen, lhs_len, maxlhs, permsdic, burnin, nchains,
+              d_init):
     res = {}
-    permsdic,res['perms'] = bayesdl_mcmc(numiters,thinning,alpha,lbda,eta,X,Y,nruleslen,lhs_len,maxlhs,permsdic,burnin,None,d_init)
-    #Store the permsdic results
-    res['permsdic'] = {perm:list(vals) for perm,vals in permsdic.items() if vals[1]>0}
-    #Reset the permsdic
+    permsdic, res['perms'] = bayesdl_mcmc(numiters, thinning, alpha, lbda, eta, X, Y, nruleslen, lhs_len, maxlhs,
+                                          permsdic, burnin, None, d_init)
+    # Store the permsdic results
+    # print(permsdic)
+    count = 0
+    for a, b in permsdic.items():
+        print(a, b, 'pre')
+        if count ==5:
+            break
+        count +=1
+    res['permsdic'] = {perm: list(vals) for perm, vals in permsdic.items() if vals[1] > 0}
+    # print(res['permsdic'], '<----')
+    count = 0
+    for a, b in res['permsdic'].items():
+        print(a, b, '<----')
+        if count == 5:
+            break
+        count += 1
+    # Reset the permsdic
     permsdic = reset_permsdic(permsdic)
     return res
 
-#Check convergence with GR diagnostic
+
+# Check convergence with GR diagnostic
 def gelmanrubin(res):
-    n = 0 #number of samples per chain - to be computed
-    m = len(res) #number of chains
+    n = 0  # number of samples per chain - to be computed
+    m = len(res)  # number of chains
     phi_bar_j = {}
     for chain in res:
         phi_bar_j[chain] = 0.
         for val in res[chain]['permsdic'].values():
-            phi_bar_j[chain] += val[1]*val[0] #numsamples*log posterior
+            # print(val[1], val[0], '<----')
+            phi_bar_j[chain] += val[1] * val[0]  # numsamples*log posterior
             n += val[1]
-    #And normalize
-    n = n//m #Number of samples per chain (assuming all m chains have same number of samples)
-    #Normalize, and compute phi_bar
+    # And normalize
+    n = n // m  # Number of samples per chain (assuming all m chains have same number of samples)
+    # Normalize, and compute phi_bar
     phi_bar = 0.
     for chain in phi_bar_j:
         phi_bar_j[chain] = phi_bar_j[chain]/float(n) #normalize
         phi_bar += phi_bar_j[chain]
     phi_bar = phi_bar/float(m) #phi_bar = average of phi_bar_j
-    #Now B
+    # Now B
     B = 0.
     for chain in phi_bar_j:
         B += (phi_bar_j[chain] - phi_bar)**2
-    B = B*(n/float(m-1))
-    #Now W.
+    B = B * (n/float(m-1))
+    # Now W.
     W = 0.
     for chain in res:
         s2_j = 0.
         for val in res[chain]['permsdic'].values():
-            s2_j += val[1]*(val[0] -phi_bar_j[chain])**2
+            s2_j += val[1] * (val[0] - phi_bar_j[chain])**2
+            # print(val[1], val[0], phi_bar_j[chain])
         s2_j = (1./float(n-1))*s2_j
+        # print(s2_j)
         W += s2_j
+    # print(W, m, n)
     W = W*(1./float(m))
-    #Next varhat
+    # print(W)
+    # Next varhat
     varhat = ((n-1)/float(n))*W + (1./float(n))*B
-    #And finally,
+    # And finally,
     try:
         Rhat = sqrt(varhat/float(W))
     except RuntimeWarning:
@@ -244,14 +269,15 @@ def gelmanrubin(res):
         Rhat = 0.
     return Rhat
 
-#Plot the logposterior values for the samples in the chains.
-def plot_chains(res):
-    for chain in res:
-        plt.plot([res[chain]['permsdic'][a][0] for a in res[chain]['perms']])
-    plt.show()
-    return
 
-#Merge chains into a single collection of posterior samples
+# # Plot the logposterior values for the samples in the chains.
+# def plot_chains(res):
+#     for chain in res:
+#         plt.plot([res[chain]['permsdic'][a][0] for a in res[chain]['perms']])
+#     plt.show()
+#     return
+
+# Merge chains into a single collection of posterior samples
 def merge_chains(res):
     permsdic = defaultdict(default_permsdic)
     for n in res:
@@ -260,283 +286,339 @@ def merge_chains(res):
             permsdic[perm][1] += vals[1]
     return permsdic
 
-#Get a point estimate with length and width similar to the posterior average, with highest likelihood
-def get_point_estimate(permsdic,lhs_len,X,Y,alpha,nruleslen,maxlhs,lbda,eta,verbose=True):
-    #Figure out the posterior expected list length and average rule size
+
+# Get a point estimate with length and width similar to the posterior average, with highest likelihood
+def get_point_estimate(permsdic, lhs_len, X, Y, alpha, nruleslen, maxlhs, lbda, eta, verbose=True):
+    # Figure out the posterior expected list length and average rule size
     listlens = []
     rulesizes = []
     for perm in permsdic:
         d_t = Pickle.loads(perm)
+        # d_t = list(perm)
         listlens.extend([len(d_t)] * int(permsdic[perm][1]))
         rulesizes.extend([lhs_len[j] for j in d_t[:-1]] * int(permsdic[perm][1]))
-    #Now compute average
+    # Now compute average
     avglistlen = average(listlens)
     if verbose:
-        print('Posterior average length:',avglistlen)
+        print('Posterior average length:', avglistlen)
     try:
         avgrulesize = average(rulesizes)
         if verbose:
-            print('Posterior average width:',avgrulesize)
-        #Prepare the intervals
+            print('Posterior average width:', avgrulesize)
+        # Prepare the intervals
         minlen = int(floor(avglistlen))
         maxlen = int(ceil(avglistlen))
         minrulesize = int(floor(avgrulesize))
         maxrulesize = int(ceil(avgrulesize))
-        #Run through all perms again
+        # Run through all perms again
         likelihds = []
         d_ts = []
-        beta_Z,logalpha_pmf,logbeta_pmf = prior_calculations(lbda,len(X),eta,maxlhs) #get the constants needed to compute the prior
+        beta_Z, logalpha_pmf, logbeta_pmf = prior_calculations(lbda, len(X), eta, maxlhs)
+        # get the constants needed to compute the prior
         for perm in permsdic:
             if permsdic[perm][1]>0:
-                d_t = Pickle.loads(perm) #this is the antecedent list
-                #Check the list length
-                if len(d_t) >= minlen and len(d_t) <= maxlen:
-                    #Check the rule size
+                d_t = Pickle.loads(perm)  # this is the antecedent list
+                # d_t = list(perm)
+                # Check the list length
+                # if len(d_t) >= minlen and len(d_t) <= maxlen:
+                if minlen <= len(d_t) <= maxlen:
+                    # Check the rule size
                     rulesize = average([lhs_len[j] for j in d_t[:-1]])
                     if rulesize >= minrulesize and rulesize <= maxrulesize:
                         d_ts.append(d_t)
-                        #Compute the likelihood
+                        # Compute the likelihood
                         R_t = d_t.index(0)
-                        N_t = compute_rule_usage(d_t,R_t,X,Y)
-                        likelihds.append(fn_logposterior(d_t,R_t,N_t,alpha,logalpha_pmf,logbeta_pmf,maxlhs,beta_Z,nruleslen,lhs_len))
+                        N_t = compute_rule_usage(d_t, R_t, X, Y)
+                        likelihds.append(fn_logposterior(d_t, R_t, N_t, alpha, logalpha_pmf, logbeta_pmf, maxlhs, beta_Z, nruleslen, lhs_len))
         likelihds = array(likelihds)
         d_star = d_ts[likelihds.argmax()]
     except RuntimeWarning:
-        #This can happen if all perms are identically [0], or if no soln is found within the len and width bounds (probably the chains didn't converge)
+        # This can happen if all perms are identically [0], or if no soln is found within the
+        # len and width bounds (probably the chains didn't converge)
         print('No suitable point estimate found')
         d_star = None
     return d_star
 
-#################COMPUTING RESULTS
+# COMPUTING RESULTS
 
-#Compute the posterior consequent distributions
-def get_rule_rhs(Xtrain,Ytrain,d_t,alpha,intervals):
-    N_t = compute_rule_usage(d_t,d_t.index(0),Xtrain,Ytrain)
+
+# Compute the posterior consequent distributions
+def get_rule_rhs(Xtrain, Ytrain, d_t, alpha, intervals):
+    N_t = compute_rule_usage(d_t, d_t.index(0), Xtrain, Ytrain)
     theta = []
     ci_theta = []
     for i,j in enumerate(d_t):
-        #theta ~ Dirichlet(N[j,:] + alpha)
-        #E[theta] = (N[j,:] + alpha)/float(sum(N[j,:] + alpha))
-        #NOTE this result is only for binary classification
-        #theta = p(y=1)
+        # theta ~ Dirichlet(N[j,:] + alpha)
+        # E[theta] = (N[j,:] + alpha)/float(sum(N[j,:] + alpha))
+        # NOTE this result is only for binary classification
+        # theta = p(y=1)
         theta.append((N_t[i,1] + alpha[1])/float(sum(N_t[i,:] + alpha)))
-        #And now the 95% interval, for Beta(N[j,1] + alpha[1], N[j,0] + alpha[0])
+        # And now the 95% interval, for Beta(N[j,1] + alpha[1], N[j,0] + alpha[0])
         if intervals:
             ci_theta.append(beta.interval(0.95,N_t[i,1] + alpha[1],N_t[i,0] + alpha[0]))
-    return theta,ci_theta
+    return theta, ci_theta
 
-#Get predictions from the list d_t
-def preds_d_t(X,Y,d_t,theta):
-    #this is binary only. The score is the Prob of 1.
+
+# Get predictions from the list d_t
+def preds_d_t(X, Y, d_t, theta, itemsets):
+    # this is binary only. The score is the Prob of 1.
     unused = set(range(Y.shape[0]))
     preds = -1*ones(Y.shape[0])
-    for i,j in enumerate(d_t):
-        usedj = unused.intersection(X[j]) #these are the observations in X that make it to rule j
+    # print('AAAAAA')
+    for i, j in enumerate(d_t):
+        usedj = unused.intersection(X[j])  # these are the observations in X that make it to rule j
         preds[list(usedj)] = theta[i]
+        # print(i, j, usedj, X[j], theta[i])
+        # for k in usedj:
+        #     print(itemsets[k])
+        # print('----')
         unused = unused.difference(set(usedj))
     if preds.min() < 0:
-        raise Exception #this means some observation wasn't given a prediction - shouldn't happen
+        raise Exception  # this means some observation wasn't given a prediction - shouldn't happen
     return preds
 
-#Make predictions using the full posterior
-def preds_full_posterior(X,Y,Xtrain,Ytrain,permsdic,alpha):
-    #this is binary only. The score is the Prob of 1.
+
+# Make predictions using the full posterior
+def preds_full_posterior(X, Y, Xtrain, Ytrain, permsdic, alpha):
+    # this is binary only. The score is the Prob of 1.
     preds = zeros(Y.shape[0])
-    postcount = 0. #total number of posterior samples
-    for perm,vals in permsdic.items():
-        #We will compute probabilities for this antecedent list d.
+    postcount = 0.  # total number of posterior samples
+    for perm, vals in permsdic.items():
+        # We will compute probabilities for this antecedent list d.
         d_t = Pickle.loads(perm)
-        permcount = float(vals[1]) #number of copies of this perm in the posterior
+        # d_t = list(perm)
+        permcount = float(vals[1])  # number of copies of this perm in the posterior
         postcount += float(vals[1])
-        #We will get the posterior E[theta]'s for this list
-        theta,jnk = get_rule_rhs(Xtrain,Ytrain,d_t,alpha,False)
-        #And assign observations a score
+        # We will get the posterior E[theta]'s for this list
+        theta,jnk = get_rule_rhs(Xtrain, Ytrain, d_t, alpha, False)
+        # And assign observations a score
         unused = set(range(Y.shape[0]))
-        for i,j in enumerate(d_t):
-            usedj = unused.intersection(X[j]) #these are the observations in X that make it to rule j
+        for i, j in enumerate(d_t):
+            usedj = unused.intersection(X[j])  # these are the observations in X that make it to rule j
             preds[list(usedj)] += theta[i]*permcount
             unused = unused.difference(set(usedj))
         if unused:
-            raise Exception #all observations should have been given predictions
-        #Done with this list, move on to the next one.
-    #Done with all lists. Normalize.
+            raise Exception # all observations should have been given predictions
+        # Done with this list, move on to the next one.
+    # Done with all lists. Normalize.
     preds /= float(postcount)
     return preds
 
-#Compute accuracy
+
+# Compute accuracy
 def preds_to_acc(y_score,y_true):
-    thr = 0.5 #we take label = 1 if y_score >= 0.5
+    thr = 0.5  # we take label = 1 if y_score >= 0.5
     accur = 0.
-    for i,prob in enumerate(y_score):
+    for i, prob in enumerate(y_score):
         if prob >= thr and y_true[i] == 1:
-            accur+=1
+            accur += 1
         elif prob < thr and y_true[i] == 0:
-            accur+=1
+            accur += 1
     accur = accur/float(len(y_score))
     return accur
 
-##############MCMC core
+# MCMC core
 
-#The Metropolis-Hastings algorithm
-def bayesdl_mcmc(numiters,thinning,alpha,lbda,eta,X,Y,nruleslen,lhs_len,maxlhs,permsdic,burnin,rseed,d_init):
-    #initialize
+
+# The Metropolis-Hastings algorithm
+def bayesdl_mcmc(numiters, thinning, alpha, lbda, eta, X, Y,
+                 nruleslen, lhs_len, maxlhs, permsdic, burnin, rseed, d_init):
+    # print('init', permsdic)
+    # initialize
     perms = []
     if rseed:
         random.seed(rseed)
-    #Do some pre-computation for the prior
-    beta_Z,logalpha_pmf,logbeta_pmf = prior_calculations(lbda,len(X),eta,maxlhs)
-    if d_init: #If we want to begin our chain at a specific place (e.g. to continue a chain)
+    # Do some pre-computation for the prior
+    beta_Z, logalpha_pmf, logbeta_pmf = prior_calculations(lbda, len(X), eta, maxlhs)
+    if d_init:  # If we want to begin our chain at a specific place (e.g. to continue a chain)
         d_t = Pickle.loads(d_init)
+        # d_t = list(d_init)
         d_t.extend([i for i in range(len(X)) if i not in d_t])
         R_t = d_t.index(0)
-        N_t = compute_rule_usage(d_t,R_t,X,Y)
-    else:
-        d_t,R_t,N_t = initialize_d(X,Y,lbda,eta,lhs_len,maxlhs,nruleslen) #Otherwise sample the initial value from the prior
-    #Add to dictionary which will store the sampling results
-    a_t = Pickle.dumps(d_t[:R_t+1]) #The antecedent list in string form
+        N_t = compute_rule_usage(d_t, R_t, X, Y)
+    else:  # Otherwise sample the initial value from the prior
+        d_t, R_t, N_t = initialize_d(X, Y, lbda, eta, lhs_len, maxlhs, nruleslen)
+
+    # Add to dictionary which will store the sampling results
+    a_t = Pickle.dumps(d_t[:R_t + 1])  # The antecedent list in string form
+    # a_t = tuple(d_t[:R_t + 1])
     if a_t not in permsdic:
-        permsdic[a_t][0] = fn_logposterior(d_t,R_t,N_t,alpha,logalpha_pmf,logbeta_pmf,maxlhs,beta_Z,nruleslen,lhs_len) #Compute its logposterior
+        permsdic[a_t][0] = fn_logposterior(d_t, R_t, N_t, alpha, logalpha_pmf, logbeta_pmf,
+                                           maxlhs, beta_Z, nruleslen, lhs_len)  # Compute its logposterior
     if burnin == 0:
-        permsdic[a_t][1] += 1 #store the initialization sample
-    #iterate!
+        permsdic[a_t][1] += 1  # store the initialization sample
+    count = 0
+    for a, b in permsdic.items():
+        print(a, b, 'here1')
+        if count == 5:
+            break
+        count += 1
+
+    # iterate!
     for itr in range(numiters):
-        #Sample from proposal distribution
-        d_star,Jratio,R_star,step = proposal(d_t,R_t,X,Y,alpha)
-        #Compute the new posterior value, if necessary
+        # Sample from proposal distribution
+        d_star, Jratio, R_star, step = proposal(d_t, R_t, X, Y, alpha)
+        # Compute the new posterior value, if necessary
         a_star = Pickle.dumps(d_star[:R_star+1])
+        # a_star = tuple(d_star[:R_star+1])
         if a_star not in permsdic:
-            N_star = compute_rule_usage(d_star,R_star,X,Y)
-            permsdic[a_star][0] = fn_logposterior(d_star,R_star,N_star,alpha,logalpha_pmf,logbeta_pmf,maxlhs,beta_Z,nruleslen,lhs_len)
-        #Compute the metropolis acceptance probability
+            N_star = compute_rule_usage(d_star, R_star, X, Y)
+            permsdic[a_star][0] = fn_logposterior(d_star, R_star, N_star, alpha, logalpha_pmf, logbeta_pmf, maxlhs,
+                                                  beta_Z, nruleslen, lhs_len)
+
+        # count = 0
+        # for a, b in permsdic.items():
+        #     print(a, b, 'here2')
+        #     if count == 5:
+        #         break
+        #     count += 1
+
+        # Compute the metropolis acceptance probability
         q = exp(permsdic[a_star][0] - permsdic[a_t][0] + Jratio)
         u = random.random()
         if u < q:
-            #then we accept the move
+            # then we accept the move
             d_t = list(d_star)
             R_t = int(R_star)
             a_t = str(a_star)
-            #else: pass
+            # else: pass
         if itr > burnin and itr % thinning == 0:
-            ##store
+            # store
             permsdic[a_t][1] += 1
             perms.append(a_t)
-    return permsdic,perms
+            # print('qui', permsdic[a_t])
 
-#Samples a list from the prior
+    count = 0
+    for a, b in permsdic.items():
+        print(a, b, 'here_finale')
+        if count == 5:
+            break
+        count += 1
+
+    return permsdic, perms
+
+
+# Samples a list from the prior
 def initialize_d(X,Y,lbda,eta,lhs_len,maxlhs,nruleslen):
     m = Inf
-    while m>=len(X):
-        m = poisson.rvs(lbda) #sample the length of the list from Poisson(lbda), truncated at len(X)
-    #prepare the list
+    while m >= len(X):
+        m = poisson.rvs(lbda)  # sample the length of the list from Poisson(lbda), truncated at len(X)
+    # prepare the list
     d_t = []
     empty_rulelens = [r for r in range(1,maxlhs+1) if r not in nruleslen]
     used_rules = []
     for i in range(m):
         #Sample a rule size.
         r = 0
-        while r==0 or r > maxlhs or r in empty_rulelens:
-            r = poisson.rvs(eta) #Sample the rule size from Poisson(eta), truncated at 0 and maxlhs and not using empty rule lens
-        #Now sample a rule of that size uniformly at random
+        while r == 0 or r > maxlhs or r in empty_rulelens:
+            r = poisson.rvs(eta)
+            # Sample the rule size from Poisson(eta), truncated at 0 and maxlhs and not using empty rule lens
+        # Now sample a rule of that size uniformly at random
         rule_cands = [j for j,lhslen in enumerate(lhs_len) if lhslen == r and j not in used_rules]
         random.shuffle(rule_cands)
         j = rule_cands[0]
-        #And add it in
+        # And add it in
         d_t.append(j)
         used_rules.append(j)
         assert lhs_len[j] == r
         if len(rule_cands) == 1:
             empty_rulelens.append(r)
-    #Done adding rules. We have added m rules. Finish up.
-    d_t.append(0) #all done
+    # Done adding rules. We have added m rules. Finish up.
+    d_t.append(0) # all done
     d_t.extend([i for i in range(len(X)) if i not in d_t])
     R_t = d_t.index(0)
     assert R_t == m
-    #Figure out what rules are used to classify what points
-    N_t = compute_rule_usage(d_t,R_t,X,Y)
-    return d_t,R_t,N_t
+    # Figure out what rules are used to classify what points
+    N_t = compute_rule_usage(d_t, R_t, X, Y)
+    return d_t, R_t, N_t
 
-#Propose a new d_star
-def proposal(d_t,R_t,X,Y,alpha):
+
+# Propose a new d_star
+def proposal(d_t, R_t, X, Y, alpha):
     d_star = list(d_t)
     R_star = int(R_t)
-    move_probs_default = array([0.3333333333,0.3333333333,0.3333333333]) #We begin with these as the move probabilities, but will renormalize as needed if certain moves are unavailable.
-    #We have 3 moves: move, add, cut. Define the pdf for the probabilities of the moves, in that order:
+    move_probs_default = array([0.3333333333, 0.3333333333, 0.3333333333])
+    # We begin with these as the move probabilities, but will renormalize as needed if certain moves are unavailable.
+    # We have 3 moves: move, add, cut. Define the pdf for the probabilities of the moves, in that order:
     if R_t == 0:
-        #List is empty. We must add.
-        move_probs = array([0.,1.,0.])
-        #This is an add transition. The probability of the reverse cut move is the prob of a list of len 1 having a cut (other option for list of len 1 is an add).
-        Jratios = array([0.,move_probs_default[2]/float(move_probs_default[1] + move_probs_default[2]),0.])
+        # List is empty. We must add.
+        move_probs = array([0., 1. ,0.])
+        # This is an add transition. The probability of the reverse cut move is the prob of a list of
+        # len 1 having a cut (other option for list of len 1 is an add).
+        Jratios = array([0., move_probs_default[2]/float(move_probs_default[1] + move_probs_default[2]), 0.])
     elif R_t == 1:
-        #List has one rule on it. We cannot move, must add or cut.
-        move_probs = array(move_probs_default) #copy
-        move_probs[0] = 0. #drop move move.
-        move_probs = move_probs/sum(move_probs) #renormalize
-        #If add, probability of the reverse cut is the default cut probability
-        #If cut, probability of the reverse add is 1.
-        inv_move_probs = array([0.,move_probs_default[2],1.])
+        # List has one rule on it. We cannot move, must add or cut.
+        move_probs = array(move_probs_default)  # copy
+        move_probs[0] = 0.  # drop move move.
+        move_probs = move_probs/sum(move_probs)  # renormalize
+        # If add, probability of the reverse cut is the default cut probability
+        # If cut, probability of the reverse add is 1.
+        inv_move_probs = array([0., move_probs_default[2], 1.])
         Jratios = zeros_like(move_probs)
-        Jratios[1:] = inv_move_probs[1:]/move_probs[1:] #array elementwise division
+        Jratios[1:] = inv_move_probs[1:]/move_probs[1:]  # array elementwise division
     elif R_t == len(d_t) - 1:
-        #List has all rules on it. We cannot add, must move or cut.
+        # List has all rules on it. We cannot add, must move or cut.
         move_probs = array(move_probs_default) #copy
         move_probs[1] = 0. #drop add move.
         move_probs = move_probs/sum(move_probs) #renormalize
-        #If move, probability of reverse move is move_probs[0], so Jratio = 1.
-        #if cut, probability of reverse add is move_probs_default
+        # If move, probability of reverse move is move_probs[0], so Jratio = 1.
+        # if cut, probability of reverse add is move_probs_default
         Jratios = array([1., 0., move_probs_default[1]/move_probs[2]])
     elif R_t == len(d_t) - 2:
-        #List has all rules but 1 on it.
-        #Move probabilities are the default, but the inverse are a little different.
+        # List has all rules but 1 on it.
+        # Move probabilities are the default, but the inverse are a little different.
         move_probs = array(move_probs_default)
-        #If move, probability of reverse move is still default, so Jratio = 1.
-        #if cut, probability of reverse add is move_probs_default[1],
-        #if add, probability of reverse cut is,
+        # If move, probability of reverse move is still default, so Jratio = 1.
+        # if cut, probability of reverse add is move_probs_default[1],
+        # if add, probability of reverse cut is,
         Jratios = array([1., move_probs_default[2]/float(move_probs_default[0]+move_probs_default[2])/float(move_probs_default[1]), move_probs_default[1]/float(move_probs_default[2])])
     else:
         move_probs = array(move_probs_default)
         Jratios = array([1.,move_probs[2]/float(move_probs[1]),move_probs[1]/float(move_probs[2])])
     u = random.random()
-    #First we will find the indicies for the insertion-deletion. indx1 is the item to be moved, indx2 is the new location
+    # First we will find the indicies for the insertion-deletion.
+    # indx1 is the item to be moved, indx2 is the new location
     if u < sum(move_probs[:1]):
-        #This is an on-list move.
+        # T his is an on-list move.
         step = 'move'
-        [indx1,indx2] = random.permutation(range(len(d_t[:R_t])))[:2] #value error if there are no on list entries
-        #print 'move',indx1,indx2
-        Jratio = Jratios[0] #ratio of move/move probabilities is 1.
+        [indx1, indx2] = random.permutation(range(len(d_t[:R_t])))[:2]  # value error if there are no on list entries
+        # print 'move',indx1,indx2
+        Jratio = Jratios[0] # ratio of move/move probabilities is 1.
     elif u < sum(move_probs[:2]):
-        #this is an add
+        # this is an add
         step = 'add'
-        indx1 = R_t+1+random.randint(0,len(d_t[R_t+1:])) #this will throw ValueError if there are no off list entries
-        indx2 = random.randint(0,len(d_t[:R_t+1])) #this one will always work
-        #print 'add',indx1,indx2
-        #the probability of going from d_star back to d_t is the probability of the corresponding cut.
-        #p(d*->d|cut) = 1/|d*| = 1/(|d|+1) = 1./float(R_t+1)
-        #p(d->d*|add) = 1/((|a|-|d|)(|d|+1)) = 1./(float(len(d_t)-1-R_t)*float(R_t+1))
+        indx1 = R_t+1+random.randint(0, len(d_t[R_t+1:]))  # this will throw ValueError if there are no off list entries
+        indx2 = random.randint(0, len(d_t[:R_t+1]))  # this one will always work
+        # print 'add',indx1,indx2
+        # the probability of going from d_star back to d_t is the probability of the corresponding cut.
+        # p(d*->d|cut) = 1/|d*| = 1/(|d|+1) = 1./float(R_t+1)
+        # p(d->d*|add) = 1/((|a|-|d|)(|d|+1)) = 1./(float(len(d_t)-1-R_t)*float(R_t+1))
         Jratio = Jratios[1]*float(len(d_t)-1-R_t)
-        R_star+=1
+        R_star += 1
     elif u < sum(move_probs[:3]):
-        #this is a cut
+        # this is a cut
         step = 'cut'
-        indx1 = random.randint(0,len(d_t[:R_t])) #this will throw ValueError if there are no on list entries
-        indx2 = R_t+random.randint(0,len(d_t[R_t:])) #this one will always work
-        #print 'cut',indx1,indx2
-        #the probability of going from d_star back to d_t is the probability of the corresponding add.
-        #p(d*->d|add) = 1/((|a|-|d*|)(|d*|+1)) = 1/((|a|-|d|+1)(|d|))
-        #p(d->d*|cut) = 1/|d|
-        #Jratio = 
+        indx1 = random.randint(0,len(d_t[:R_t])) # this will throw ValueError if there are no on list entries
+        indx2 = R_t+random.randint(0,len(d_t[R_t:])) # this one will always work
+        # print 'cut', indx1, indx2
+        # the probability of going from d_star back to d_t is the probability of the corresponding add.
+        # p(d*->d|add) = 1/((|a|-|d*|)(|d*|+1)) = 1/((|a|-|d|+1)(|d|))
+        # p(d->d*|cut) = 1/|d|
+        # Jratio =
         Jratio = Jratios[2]*(1./float(len(d_t)-1-R_t+1))
-        R_star -=1
+        R_star -= 1
     else:
         raise Exception
-    #Now do the insertion-deletion
-    d_star.insert(indx2,d_star.pop(indx1))
-    return d_star,log(Jratio),R_star,step
+    # Now do the insertion-deletion
+    d_star.insert(indx2, d_star.pop(indx1))
+    return d_star, log(Jratio), R_star, step
 
-#Compute the normalization constants for the prior on rule cardinality
+
+# Compute the normalization constants for the prior on rule cardinality
 def prior_calculations(lbda,maxlen,eta,maxlhs):
-    #First normalization constants for beta
+    # First normalization constants for beta
     beta_Z = poisson.cdf(maxlhs,eta) - poisson.pmf(0,eta)
-    #Then the actual un-normalized pmfs
+    # Then the actual un-normalized pmfs
     logalpha_pmf = {}
     for i in range(maxlen+1):
         try:
@@ -546,48 +628,53 @@ def prior_calculations(lbda,maxlen,eta,maxlhs):
     logbeta_pmf = {}
     for i in range(1,maxlhs+1):
         logbeta_pmf[i] = poisson.logpmf(i,eta)
-    return beta_Z,logalpha_pmf,logbeta_pmf
+    return beta_Z, logalpha_pmf, logbeta_pmf
 
-#Compute log posterior
-def fn_logposterior(d_t,R_t,N_t,alpha,logalpha_pmf,logbeta_pmf,maxlhs,beta_Z,nruleslen,lhs_len):
-    logliklihood = fn_logliklihood(d_t,N_t,R_t,alpha)
-    logprior = fn_logprior(d_t,R_t,logalpha_pmf,logbeta_pmf,maxlhs,beta_Z,nruleslen,lhs_len)
+
+# Compute log posterior
+def fn_logposterior(d_t, R_t, N_t, alpha, logalpha_pmf, logbeta_pmf, maxlhs, beta_Z, nruleslen, lhs_len):
+    logliklihood = fn_logliklihood(d_t, N_t, R_t, alpha)
+    logprior = fn_logprior(d_t, R_t, logalpha_pmf, logbeta_pmf, maxlhs, beta_Z, nruleslen, lhs_len)
     return logliklihood + logprior
 
-#Compute log likelihood
-def fn_logliklihood(d_t,N_t,R_t,alpha):
+
+# Compute log likelihood
+def fn_logliklihood(d_t, N_t, R_t, alpha):
     gammaln_Nt_jk = gammaln(N_t+alpha)
-    gammaln_Nt_j = gammaln(sum(N_t+alpha,1))
+    gammaln_Nt_j = gammaln(sum(N_t+alpha, 1))
     logliklihood = sum(gammaln_Nt_jk) - sum(gammaln_Nt_j)
     return logliklihood
 
-#Compute log prior
+
+# Compute log prior
 def fn_logprior(d_t,R_t,logalpha_pmf,logbeta_pmf,maxlhs,beta_Z,nruleslen,lhs_len):
-    #The prior will be _proportional_ to this -> we drop the normalization for alpha
-    #beta_Z is the normalization for beta, except the terms that need to be dropped due to running out of rules.
-    #log p(d_star) = log \alpha(m|lbda) + sum_{i=1...m} log beta(l_i | eta) + log gamma(r_i | l_i)
-    #The length of the list (m) is R_t
-    #Get logalpha (length of list) (overloaded notation in this code, unrelated to the prior hyperparameter alpha)
+    # The prior will be _proportional_ to this -> we drop the normalization for alpha
+    # beta_Z is the normalization for beta, except the terms that need to be dropped due to running out of rules.
+    # log p(d_star) = log \alpha(m|lbda) + sum_{i=1...m} log beta(l_i | eta) + log gamma(r_i | l_i)
+    # The length of the list (m) is R_t
+    # Get logalpha (length of list) (overloaded notation in this code, unrelated to the prior hyperparameter alpha)
     logprior = 0.
-    logalpha = logalpha_pmf[R_t] #this is proportional to logalpha - we have dropped the normalization for truncating based on total number of rules
+    logalpha = logalpha_pmf[R_t]
+    # this is proportional to logalpha - we have dropped the normalization for truncating based on total number of rules
     logprior += logalpha
     empty_rulelens = []
     nlens = zeros(maxlhs+1)
     for i in range(R_t):
         l_i = lhs_len[d_t[i]]
-        logbeta = logbeta_pmf[l_i] - log(beta_Z - sum([logbeta_pmf[l_j] for l_j in empty_rulelens])) #The correction for exhausted rule lengths
-        #Finally loggamma
+        logbeta = logbeta_pmf[l_i] - log(beta_Z - sum([logbeta_pmf[l_j] for l_j in empty_rulelens]))
+        # The correction for exhausted rule lengths
+        # Finally loggamma
         loggamma = -log(nruleslen[l_i] - nlens[l_i])
-        #And now check if we have exhausted all rules of a certain size
+        # And now check if we have exhausted all rules of a certain size
         nlens[l_i] += 1
         if nlens[l_i] == nruleslen[l_i]:
             empty_rulelens.append(l_i)
         elif nlens[l_i] > nruleslen[l_i]:
             raise Exception
-        #Add 'em in
+        # Add 'em in
         logprior += logbeta
         logprior += loggamma
-    #All done
+    # All done
     return logprior
 
 #Compute which rules are being used to classify data points with what labels
@@ -606,16 +693,16 @@ def compute_rule_usage(d_star,R_star,X,Y):
     return N_star
 
 
-####Data loading
+# Data loading
 
-#Frequent itemset mining
+# Frequent itemset mining
 def get_freqitemsets(fname,minsupport,maxlhs, verbose=True):
-    #minsupport is an integer percentage (e.g. 10 for 10%)
-    #maxlhs is the maximum size of the lhs
-    #first load the data
+    # minsupport is an integer percentage (e.g. 10 for 10%)
+    # maxlhs is the maximum size of the lhs
+    # first load the data
     data,Y = load_data(fname)
-    #Now find frequent itemsets
-    #Mine separately for each class
+    # Now find frequent itemsets
+    # Mine separately for each class
     data_pos = [x for i,x in enumerate(data) if Y[i,0]==0]
     data_neg = [x for i,x in enumerate(data) if Y[i,0]==1]
     assert len(data_pos)+len(data_neg) == len(data)
@@ -643,38 +730,4 @@ def get_freqitemsets(fname,minsupport,maxlhs, verbose=True):
     itemsets_all = ['null']
     itemsets_all.extend(itemsets)
     return X,Y,nruleslen,lhs_len,itemsets_all
-  
-#Load the demo data, and determine which antecedents are satisfied by each demo observation
-def get_testdata(fname,itemsets):
-    #And now the demo data.
-    #first load the data
-    data,Y = load_data(fname)
-    #Now form the data-vs.-lhs set
-    #X[j] is the set of data points that contain itemset j (that is, satisfy rule j)
-    X = [set() for j in range(len(itemsets))]
-    X[0] = set(range(len(data))) #the default rule satisfies all data
-    for (j,lhs) in enumerate(itemsets):
-        if j>0:
-            X[j] = set([i for (i,xi) in enumerate(data) if set(lhs).issubset(xi)])
-    Ylabels = [list(i).index(1) for i in Y]
-    return X,Y,Ylabels
 
-#Read in the .tab file
-def load_data(fname):
-    #Load data
-    with open(fname+'.tab','r') as fin:
-        A = fin.readlines()
-    data = []
-    for ln in A:
-        data.append(ln.split())
-    #Now load Y
-    Y = loadtxt(fname+'.Y')
-    if len(Y.shape)==1:
-        Y = array([Y])
-    return data,Y
-
-#############END!!
-
-
-if __name__ == '__main__':
-    topscript()

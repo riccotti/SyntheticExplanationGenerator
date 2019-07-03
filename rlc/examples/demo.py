@@ -9,12 +9,14 @@ dataseturls = ["https://archive.ics.uci.edu/ml/datasets/Iris", "https://archive.
 datasets = ["iris", "diabetes"]
 data_feature_labels = [
     ["Sepal length", "Sepal width", "Petal length", "Petal width"],
-    ["#Pregnant","Glucose concentration demo","Blood pressure(mmHg)","Triceps skin fold thickness(mm)","2-Hour serum insulin (mu U/ml)","Body mass index","Diabetes pedigree function","Age (years)"]
+    ["#Pregnant","Glucose concentration demo","Blood pressure(mmHg)",
+     "Triceps skin fold thickness(mm)","2-Hour serum insulin (mu U/ml)",
+     "Body mass index","Diabetes pedigree function","Age (years)", "Pippo", "Pluto"]
 ]
 data_class1_labels = ["Iris Versicolour", "No Diabetes"]
 
 for i in range(len(datasets)):
-    if i==0:
+    if i == 1:
         continue
     print("--------")
     print("DATASET: ", datasets[i])
@@ -26,8 +28,8 @@ for i in range(len(datasets)):
     elif datasets[i] == 'diabetes':
         data = load_diabetes()
         y = data.target
-        y[y <= 25] = 0
-        y[y > 25] = 1
+        y[y <= 100] = 0
+        y[y > 100] = 1
     else:
         continue
 
@@ -38,5 +40,9 @@ for i in range(len(datasets)):
     clf.fit(Xtrain, ytrain, feature_labels=data_feature_labels[i])
 
     print("accuracy:", clf.score(Xtest, ytest))
-    print("rules:\n", clf)
-    print("Random Forest accuracy:", sklearn.ensemble.RandomForestClassifier().fit(Xtrain, ytrain).score(Xtest, ytest))
+    # print("rules:\n", clf)
+    # print("Random Forest accuracy:", sklearn.ensemble.RandomForestClassifier().fit(Xtrain, ytrain).score(Xtest, ytest))
+
+    # clf.predict(Xtest)
+    print(clf.predict_proba(Xtest))
+    print(clf)
