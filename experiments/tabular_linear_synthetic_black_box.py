@@ -1,11 +1,16 @@
 import os
+import sys
+sys.path.append('../maple')
+sys.path.append('../lime')
+sys.path.append('../syege')
+
 import datetime
 import numpy as np
 import pandas as pd
 
 from MAPLE import MAPLE
 from shap import KernelExplainer
-from lime.lime_tabular import LimeTabularExplainer
+from lime_tabular import LimeTabularExplainer
 
 from syege import generate_synthetic_linear_classifier
 from syege import get_feature_importance_explanation
@@ -93,8 +98,8 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
 
 def main():
 
-    n_records = 3
-    n_all_features_list = [2, 4, 8, 16, 32, 64, 128]
+    n_records = 1000
+    n_all_features_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
     exp_per_naf = 10
     path = '../results/'
     filename = path + 'tabular_linear_synthetic_black_box.csv'
@@ -132,7 +137,7 @@ def main():
             attempts = 0
             while flag and attempts < max_attempts:
                 try:
-                    print(datetime.datetime.now(), black_box, n_records, n_all_features, n_features, random_state)
+                    print(datetime.datetime.now(), 'syege - tlsb', black_box, n_records, n_all_features, n_features, random_state)
                     run(black_box, n_records, n_all_features, n_features, random_state, filename)
                     flag = False
                 except ValueError:
