@@ -31,8 +31,6 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
     expr = slc['expr']
 
     X = slc['X']
-    if slc['feature_names'] is None:
-        slc['feature_names'] = ['x%s' % i for i in range(m)]
     feature_names = slc['feature_names']
     class_values = slc['class_values']
     predict_proba = slc['predict_proba']
@@ -82,8 +80,9 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
             'maple': maple_fis,
             'expr': expr,
         }
-        # print(res)
         results.append(res)
+        print(datetime.datetime.now(), '\t', expr, 'idx %s' % idx,
+              'lime %s' % lime_fis, 'shap %s' % shap_fis, 'maple %s ' % maple_fis)
 
     df = pd.DataFrame(data=results)
     df = df[['black_box', 'n_records', 'n_all_features', 'n_features', 'random_state', 'expr',
