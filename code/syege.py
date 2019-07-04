@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from collections import defaultdict
 
-from sympy import diff, re
+from sympy import diff, re, simplify
 from scipy.spatial.distance import cdist
 from sklearn.datasets import make_classification
 
@@ -93,7 +93,7 @@ def get_rule_explanation(x, srbc, n_features, get_values=False):
 
 
 def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features=2, random_state=1, n_samples=1000,
-                                         num_operations=10, p_binary=0.7, p_parenthesis=0.3):
+                                         p_binary=0.7, p_parenthesis=0.3):
     feature_names = None
     if expr is None:
         np.random.seed(random_state)
@@ -102,8 +102,10 @@ def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features
         scope = feature_names[:n_features]
 
         while True:
-            expr = generate_expression(scope, num_operations=num_operations,
-                                       p_binary=p_binary, p_parenthesis=p_parenthesis)
+            # expr = generate_expression(scope, num_operations=num_operations,
+            #                            p_binary=p_binary, p_parenthesis=p_parenthesis)
+            expr = generate_expression(scope, p_binary=p_binary, p_parenthesis=p_parenthesis)
+            expr = str(simplify(expr))
             if np.sum([1 if expr.count(f) > 0 else 0 for f in scope]) == n_features:
                 break
 
@@ -135,11 +137,16 @@ def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features
 
         evals_scaled = list()
         for x, y in zip(evals, evals_binary):
-            if y == 0:
-                val = mm0.transform(x.reshape(-1, 1))[0][0]
+            if np.isinf(x):
+                val = 1.0 if x == +np.inf else 0.0
+            elif np.isnan(x):
+                val = 0.0
             else:
-                val = mm1.transform(x.reshape(-1, 1))[0][0]
-            val = max(0.0, min(val, 1.0))
+                if y == 0:
+                    val = mm0.transform(x.reshape(-1, 1))[0][0]
+                else:
+                    val = mm1.transform(x.reshape(-1, 1))[0][0]
+                val = max(0.0, min(val, 1.0))
             evals_scaled.append([1.0 - val, val])
 
         evals_scaled = np.array(evals_scaled)
@@ -212,28 +219,29 @@ def main():
     m = 5
     n = 10
 
-    n_features = 2
-    random_state = 1
+    n_features = 3
+    random_state = None
 
-    num_operations = 10
+    num_operations = 5
     p_binary = 0.7
     p_parenthesis = 0.3
 
-    # slc = generate_synthetic_linear_classifier(n_features=n_features, n_all_features=m, random_state=random_state,
-    #                                            num_operations=num_operations, p_binary=p_binary, p_parenthesis=p_parenthesis)
-
-    slc = generate_synthetic_linear_classifier(expr='x0**2+x1/2', n_features=n_features, n_all_features=m,
-                                               random_state=random_state, num_operations=num_operations,
+    slc = generate_synthetic_linear_classifier(n_features=n_features, n_all_features=m, random_state=random_state,
                                                p_binary=p_binary, p_parenthesis=p_parenthesis)
 
+    # slc = generate_synthetic_linear_classifier(expr='x0**2+x1/2', n_features=n_features, n_all_features=m,
+    #                                            random_state=random_state, num_operations=num_operations,
+    #                                            p_binary=p_binary, p_parenthesis=p_parenthesis)
+
     expr = slc['expr']
+    print(expr)
+
     X = slc['X']
     Y = slc['Y']
     if slc['feature_names'] is None:
         slc['feature_names'] = ['x%s' % i for i in range(m)]
 
     X_test = np.random.uniform(np.min(X), np.max(X), size=(n, m))
-
 
     # plt.scatter(X[:, 0], X[:, 1], c=Y)
     # plt.show()

@@ -2,22 +2,48 @@ import numpy as np
 from sympy import sympify, Symbol, re
 
 
-def generate_expression(scope, num_operations=10, p_binary=0.7, p_parenthesis=0.3):
+# def generate_expression(scope, num_operations=10, p_binary=0.7, p_parenthesis=0.3):
+#     unaries = ['sqrt(%s)', 'exp(%s)', 'log(%s)', 'sin(%s)', 'cos(%s)', 'tan(%s)',
+#                'sinh(%s)', 'cosh(%s)', 'tanh(%s)', 'asin(%s)', 'acos(%s)',
+#                'atan(%s)', '-%s', 'sign(%s)']
+#     binaries = ['%s+%s', '%s-%s', '%s*%s', '%s/%s', '%s**%s']
+#
+#     scope = list(scope)  # make a copy first, append as we go
+#     for _ in range(num_operations):
+#         if np.random.random() < p_binary:  # decide unary or binary operator
+#             ex = np.random.choice(binaries) % (np.random.choice(scope), np.random.choice(scope))
+#             if np.random.random() < p_parenthesis:
+#                 ex = '(%s)' % ex
+#             scope.append(ex)
+#         else:
+#             scope.append(np.random.choice(unaries) % np.random.choice(scope))
+#     return scope[-1]  # return most recent expressions
+
+
+def generate_expression(scope, p_binary=0.7, p_parenthesis=0.3):
     unaries = ['sqrt(%s)', 'exp(%s)', 'log(%s)', 'sin(%s)', 'cos(%s)', 'tan(%s)',
                'sinh(%s)', 'cosh(%s)', 'tanh(%s)', 'asin(%s)', 'acos(%s)',
-               'atan(%s)', '-%s', 'sign(%s)']
+               'atan(%s)', '-%s', 'sign(%s)', '%s']
     binaries = ['%s+%s', '%s-%s', '%s*%s', '%s/%s', '%s**%s']
 
     scope = list(scope)  # make a copy first, append as we go
-    for _ in range(num_operations):
+    expr = list()
+    for variable in scope:
         if np.random.random() < p_binary:  # decide unary or binary operator
-            ex = np.random.choice(binaries) % (np.random.choice(scope), np.random.choice(scope))
+            other = np.random.choice(list(set(scope) - {variable}))
+            if np.random.random() < 0.5:
+                term = np.random.choice(binaries) % (variable, other)
+            else:
+                term = np.random.choice(binaries) % (other, variable)
             if np.random.random() < p_parenthesis:
-                ex = '(%s)' % ex
-            scope.append(ex)
+                term = '(%s)' % term
         else:
-            scope.append(np.random.choice(unaries) % np.random.choice(scope))
-    return scope[-1]  # return most recent expressions
+            term = np.random.choice(unaries) % variable
+        expr.append(term)
+
+    expr = '+'.join(expr)
+
+    return expr
 
 
 def symbolize(s):

@@ -13,13 +13,13 @@ def main():
     n = 10
 
     n_features = 3
-    random_state = 1
+    random_state = 2
 
     num_operations = 10
     p_binary = 0.7
     p_parenthesis = 0.3
 
-    slc = generate_synthetic_linear_classifier(expr='x0**3-2*x1**2+3*x2', n_features=n_features, n_all_features=m,
+    slc = generate_synthetic_linear_classifier(expr=None, n_features=n_features, n_all_features=m,
                                                random_state=random_state, num_operations=num_operations,
                                                p_binary=p_binary, p_parenthesis=p_parenthesis)
     expr = slc['expr']

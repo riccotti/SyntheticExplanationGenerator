@@ -15,6 +15,7 @@ def main():
     n_features = 2
     random_state = 1
 
+
     factor = 10
     sampling = 0.5
 
