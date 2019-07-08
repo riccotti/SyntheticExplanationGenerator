@@ -1,5 +1,6 @@
 import os
 import sys
+sys.path.append('../lime')
 sys.path.append('../anchor')
 sys.path.append('../lore')
 sys.path.append('../rulematrix')
@@ -10,8 +11,8 @@ import numpy as np
 import pandas as pd
 
 from lorem import LOREM
-from datamanager import prepare_dataset
-from util import neuclidean
+from lore_datamanager import prepare_dataset
+from lore_util import neuclidean
 from rulematrix import Surrogate
 from anchor_tabular import AnchorTabularExplainer
 
@@ -66,7 +67,15 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
         anchor_exp = anchor_explainer.explain_instance(x, predict, threshold=0.95)
         anchor_expl_val = np.array([1 if e in anchor_exp.features() else 0 for e in range(m)])
 
-        lore_exp = lore_explainer.explain_instance(x, samples=1000, use_weights=True, metric=neuclidean)
+        lore_flag = True
+        while lore_flag:
+            try:
+                lore_exp = lore_explainer.explain_instance(x, samples=1000, use_weights=True, metric=neuclidean)
+                lore_flag = False
+            except:
+                print(datetime.datetime.now(), 'retry lore')
+                lore_flag = True
+
         lore_expl_val = np.zeros(m).astype(int)
         for c in lore_exp.rule.premises:
             fid = feature_names.index(c.att)
@@ -94,9 +103,10 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
             'lore': lore_rbs,
             'sbrl': sbrl_rbs,
         }
-        print(res)
         results.append(res)
-        break
+        print(datetime.datetime.now(), 'syege - trsb', 'black_box %s' % black_box,
+              'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state,
+              '%s %s' % (idx, n_records), 'anchor %s' % anchor_rbs, 'lore %s' % lore_rbs, 'sbrl %s ' % sbrl_rbs)
 
     df = pd.DataFrame(data=results)
     df = df[['black_box', 'n_records', 'n_all_features', 'n_features', 'random_state',
@@ -109,7 +119,6 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
         df.to_csv(filename, mode='a', index=False, header=False)
 
 
-# TODO test it!!!!
 def main():
 
     n_records = 1000
@@ -158,7 +167,6 @@ def main():
                     attempts += 1
                 random_state += 1
             black_box += 1
-        break
 
 
 if __name__ == "__main__":

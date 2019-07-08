@@ -81,8 +81,10 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
             'expr': expr,
         }
         results.append(res)
-        print(datetime.datetime.now(), '\t', expr, 'idx %s' % idx,
-              'lime %s' % lime_fis, 'shap %s' % shap_fis, 'maple %s ' % maple_fis)
+        print(datetime.datetime.now(), 'syege - tlsb', 'black_box %s' % black_box,
+              'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state,
+              '%s %s' % (idx, n_records), expr,
+              'lime %.2f' % lime_fis, 'shap %.2f' % shap_fis, 'maple %.2f' % maple_fis)
 
     df = pd.DataFrame(data=results)
     df = df[['black_box', 'n_records', 'n_all_features', 'n_features', 'random_state', 'expr',
@@ -143,7 +145,6 @@ def main():
                     attempts += 1
                 random_state += 1
             black_box += 1
-        break
 
 
 if __name__ == "__main__":

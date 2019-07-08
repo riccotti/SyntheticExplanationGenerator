@@ -2,7 +2,7 @@ import copy
 import json
 import numpy as np
 
-from util import vector2dict, multilabel2str
+from lore_util import vector2dict, multilabel2str
 from collections import defaultdict
 
 

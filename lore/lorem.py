@@ -10,12 +10,12 @@ from sklearn.metrics import accuracy_score
 
 from rule import Rule, compact_premises
 
-from lore.explanation import Explanation, MultilabelExplanation
-from decision_tree import learn_local_decision_tree
-from neighgen import RandomGenerator, GeneticGenerator, RandomGeneticGenerator, ClosestInstancesGenerator
-from neighgen import GeneticProbaGenerator, RandomGeneticProbaGenerator
-from lore.rule import get_rule, get_counterfactual_rules
-from util import calculate_feature_values, neuclidean, multilabel2str, multi_dt_predict
+from lore_explanation import Explanation, MultilabelExplanation
+from lore_decision_tree import learn_local_decision_tree
+from lore_neighgen import RandomGenerator, GeneticGenerator, RandomGeneticGenerator, ClosestInstancesGenerator
+from lore_neighgen import GeneticProbaGenerator, RandomGeneticProbaGenerator
+from lore_rule import get_rule, get_counterfactual_rules
+from lore_util import calculate_feature_values, neuclidean, multilabel2str, multi_dt_predict
 
 
 def default_kernel(d, kernel_width):

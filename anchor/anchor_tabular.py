@@ -1,22 +1,21 @@
-from . import anchor_base
-from . import anchor_explanation
-from . import utils
-import lime
-import lime.lime_tabular
+import anchor_base
+import anchor_explanation
+import lime_tabular
 import collections
 import sklearn
 import numpy as np
 import os
-import copy
 import string
 from io import open
 import json
+
 
 def id_generator(size=15):
     """Helper function to generate random div ids. This is useful for embedding
     HTML into ipython notebooks."""
     chars = list(string.ascii_uppercase + string.digits)
     return ''.join(np.random.choice(chars, size, replace=True))
+
 
 class AnchorTabularExplainer(object):
     """
@@ -66,11 +65,11 @@ class AnchorTabularExplainer(object):
         self.scaler = sklearn.preprocessing.StandardScaler()
         self.scaler.fit(train_data)
         if discretizer == 'quartile':
-            self.disc = lime.lime_tabular.QuartileDiscretizer(train_data,
+            self.disc = lime_tabular.QuartileDiscretizer(train_data,
                                                          self.categorical_features,
                                                          self.feature_names)
         elif discretizer == 'decile':
-            self.disc = lime.lime_tabular.DecileDiscretizer(train_data,
+            self.disc = lime_tabular.DecileDiscretizer(train_data,
                                                      self.categorical_features,
                                                      self.feature_names)
         else:
@@ -90,7 +89,6 @@ class AnchorTabularExplainer(object):
             self.min[f] = np.min(train_data[:, f])
             self.max[f] = np.max(train_data[:, f])
             self.std[f] = np.std(train_data[:, f])
-
 
     def sample_from_train(self, conditions_eq, conditions_neq, conditions_geq,
                           conditions_leq, num_samples, validation=True):

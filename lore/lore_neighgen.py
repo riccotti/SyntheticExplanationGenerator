@@ -6,7 +6,7 @@ from scipy.spatial.distance import cdist, hamming, cosine
 
 import random
 from deap import base, creator, tools, algorithms
-from util import sigmoid, calculate_feature_values, neuclidean
+from lore_util import sigmoid, calculate_feature_values, neuclidean
 
 import warnings
 
