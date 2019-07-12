@@ -131,14 +131,15 @@ def main():
             n_features_list[-1] = n_all_features
 
         for n_features in n_features_list:
-            if restart and n_all_features < restart['n_all_features'] and n_features < restart['n_features']:
+            if restart and n_all_features <= restart['n_all_features'] and n_features <= restart['n_features']:
                 continue
 
             flag = True
             attempts = 0
             while flag and attempts < max_attempts:
                 try:
-                    print(datetime.datetime.now(), 'syege - tlsb', black_box, n_records, n_all_features, n_features, random_state)
+                    print(datetime.datetime.now(), 'syege - tlsb', 'black_box %s' % black_box,
+                          'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state)
                     run(black_box, n_records, n_all_features, n_features, random_state, filename)
                     flag = False
                 except ValueError:

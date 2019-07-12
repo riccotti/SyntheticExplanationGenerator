@@ -21,6 +21,19 @@ from syege import generate_syntetic_rule_based_classifier
 from evaluation import rule_based_similarity
 
 
+sampling_map = {
+    2: 0.5,
+    3: 0.5,
+    4: 0.5,
+    5: 0.5,
+    6: 0.5,
+    7: 0.5,
+    8: 1.0,
+    9: 1.0,
+    10: 1.0,
+}
+
+
 def run(black_box, n_records, n_all_features, n_features, random_state, filename):
 
     n = n_records
@@ -28,6 +41,10 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
 
     factor = 10
     sampling = 0.5
+    if n_features in sampling_map:
+        sampling = sampling_map[n_features]
+    else:
+        sampling = n_features / 10
 
     srbc = generate_syntetic_rule_based_classifier(n_features=n_features, n_all_features=m, random_state=random_state,
                                                    factor=factor, sampling=sampling)
@@ -58,10 +75,14 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
 
     sbrl_explainer = Surrogate(predict, student=None, is_continuous=None, is_categorical=None, is_integer=None,
                                ranges=None, cov_factor=1.0, sampling_rate=2.0, seed=None, verbose=False)
-    sbrl_explainer.fit(X)
+    if n_features <= 5:
+        sbrl_explainer.fit(X)
 
     results = list()
     for idx, x in enumerate(X_test):
+        print(datetime.datetime.now(), 'syege - trsb', 'black_box %s' % black_box,
+              'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state,
+              '%s %s' % (idx, n_records), end='')
         gt_val = get_rule_explanation(x, srbc, n_features, get_values=False)
 
         anchor_exp = anchor_explainer.explain_instance(x, predict, threshold=0.95)
@@ -81,11 +102,16 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
             fid = feature_names.index(c.att)
             lore_expl_val[fid] = 1
 
-        sbrl_expl_val = sbrl_explainer.explain(x, m)
+        if n_features <= 5:
+            sbrl_expl_val = sbrl_explainer.explain(x, m)
 
         anchor_rbs = rule_based_similarity(anchor_expl_val, gt_val)
         lore_rbs = rule_based_similarity(lore_expl_val, gt_val)
-        sbrl_rbs = rule_based_similarity(sbrl_expl_val, gt_val)
+
+        if n_features <= 5:
+            sbrl_rbs = rule_based_similarity(sbrl_expl_val, gt_val)
+        else:
+            sbrl_rbs = -1.0
 
         # print(gt_val)
         # print(lime_expl_val)
@@ -104,9 +130,7 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
             'sbrl': sbrl_rbs,
         }
         results.append(res)
-        print(datetime.datetime.now(), 'syege - trsb', 'black_box %s' % black_box,
-              'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state,
-              '%s %s' % (idx, n_records), 'anchor %s' % anchor_rbs, 'lore %s' % lore_rbs, 'sbrl %s ' % sbrl_rbs)
+        print('anchor %s' % anchor_rbs, 'lore %s' % lore_rbs, 'sbrl %s ' % sbrl_rbs)
 
     df = pd.DataFrame(data=results)
     df = df[['black_box', 'n_records', 'n_all_features', 'n_features', 'random_state',
@@ -153,14 +177,15 @@ def main():
             n_features_list[-1] = n_all_features
 
         for n_features in n_features_list:
-            if restart and n_all_features < restart['n_all_features'] and n_features < restart['n_features']:
+            if restart and n_all_features <= restart['n_all_features'] and n_features <= restart['n_features']:
                 continue
 
             flag = True
             attempts = 0
             while flag and attempts < max_attempts:
                 try:
-                    print(datetime.datetime.now(), 'syege - trsb', black_box, n_records, n_all_features, n_features, random_state)
+                    print(datetime.datetime.now(), 'syege - trsb', 'black_box %s' % black_box,
+                          'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state)
                     run(black_box, n_records, n_all_features, n_features, random_state, filename)
                     flag = False
                 except ValueError:
