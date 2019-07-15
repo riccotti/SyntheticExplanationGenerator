@@ -16,8 +16,9 @@ from rule import get_rule
 from symexpr import generate_expression, gen_classification_symbolic, eval_multinomial
 
 
-def generate_syntetic_rule_based_classifier(n_features=2, n_all_features=2, random_state=1, factor=0, sampling=0.5):
-    X, y = make_classification(n_features=n_features, n_informative=n_features, n_redundant=0,
+def generate_syntetic_rule_based_classifier(n_samples=1000, n_features=2, n_all_features=2, random_state=1, factor=0,
+                                            sampling=0.5, explore_domain=False):
+    X, y = make_classification(n_samples=n_samples, n_features=n_features, n_informative=n_features, n_redundant=0,
                                n_repeated=0, random_state=random_state, n_clusters_per_class=1)
     X += factor * np.random.random(size=X.shape)
     X = StandardScaler().fit_transform(X)
@@ -25,17 +26,24 @@ def generate_syntetic_rule_based_classifier(n_features=2, n_all_features=2, rand
     f_max = [X[:, i].max() + sampling*2 for i in range(n_features)]
 
     ff = np.meshgrid(*[np.arange(f_min[i], f_max[i], sampling) for i in range(n_features)], copy=False)
+
+    if explore_domain:
+        values = [ff[i].ravel() for i in range(n_features)]
+        X_new = np.c_[values].T
+    else:
+        X_new = X
+
     knn = KNeighborsClassifier(3)
     knn.fit(X, y)
-    values = [ff[i].ravel() for i in range(n_features)]
-    X_new = np.c_[values].T
-    Y_new = knn.predict_proba(X_new)[:, 1]
-    Y_new = Y_new.reshape(ff[0].shape)
-    Y_new = Y_new.astype(int)
 
-    y_new = Y_new.ravel()
+    # Y_new = knn.predict_proba(X_new)[:, 1]
+    # Y_new = Y_new.reshape(ff[0].shape)
+    # Y_new = Y_new.astype(int)
+    Y_new = knn.predict(X_new)
+
+    # y_new = Y_new.ravel()
     dt = DecisionTreeClassifier()
-    dt.fit(X_new, y_new)
+    dt.fit(X_new, Y_new)
 
     feature_names = ['x%s' % i for i in range(n_all_features)]
     class_name = 'class'
@@ -198,7 +206,10 @@ def get_feature_importance_explanation(x, slc, n_features, get_values=True, get_
     for i in range(n_features):
         dexpr = diff(expr, 'x%s' % i)
         subs = {'x%s' % fi: v for fi, v in zip(range(n_features), cx)}
-        val = float(re(dexpr.evalf(subs=subs)))
+        try:
+            val = float(re(dexpr.evalf(subs=subs)))
+        except TypeError:
+            val = 0.0
         val = val if get_values else 1
         explanation.append(val)
 

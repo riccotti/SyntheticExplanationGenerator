@@ -1,6 +1,3 @@
-import numpy as np
-
-
 from sklearn.datasets import fetch_20newsgroups
 from lime_text import LimeTextExplainer
 

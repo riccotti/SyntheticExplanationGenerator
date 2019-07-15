@@ -30,7 +30,7 @@ sampling_map = {
     7: 0.5,
     8: 1.0,
     9: 1.0,
-    10: 1.0,
+    10: 2.0,
 }
 
 
@@ -40,14 +40,15 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
     m = n_all_features
 
     factor = 10
-    sampling = 0.5
+    # sampling = 0.5
     if n_features in sampling_map:
         sampling = sampling_map[n_features]
     else:
         sampling = n_features / 10
 
-    srbc = generate_syntetic_rule_based_classifier(n_features=n_features, n_all_features=m, random_state=random_state,
-                                                   factor=factor, sampling=sampling)
+    srbc = generate_syntetic_rule_based_classifier(n_samples=n_records, n_features=n_features, n_all_features=m,
+                                                   random_state=random_state, factor=factor, sampling=sampling,
+                                                   explore_domain=False)
 
     X = srbc['X']
     feature_names = srbc['feature_names']
@@ -82,7 +83,7 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
     for idx, x in enumerate(X_test):
         print(datetime.datetime.now(), 'syege - trsb', 'black_box %s' % black_box,
               'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state,
-              '%s %s' % (idx, n_records), end='')
+              '%s/%s' % (idx, n_records), end=' ')
         gt_val = get_rule_explanation(x, srbc, n_features, get_values=False)
 
         anchor_exp = anchor_explainer.explain_instance(x, predict, threshold=0.95)
@@ -149,7 +150,7 @@ def main():
     n_all_features_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
     exp_per_naf = 10
     path = '../results/'
-    filename = path + 'tabular_rulebased_synthetic_black_box.csv'
+    filename = path + 'tabular_rulebased_synthetic_black_box_new.csv'
     random_state = 0
     max_attempts = 100
 
@@ -183,13 +184,13 @@ def main():
             flag = True
             attempts = 0
             while flag and attempts < max_attempts:
-                try:
-                    print(datetime.datetime.now(), 'syege - trsb', 'black_box %s' % black_box,
-                          'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state)
-                    run(black_box, n_records, n_all_features, n_features, random_state, filename)
-                    flag = False
-                except ValueError:
-                    attempts += 1
+                # try:
+                print(datetime.datetime.now(), 'syege - trsb', 'black_box %s' % black_box,
+                      'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state)
+                run(black_box, n_records, n_all_features, n_features, random_state, filename)
+                flag = False
+                # except ValueError:
+                #     attempts += 1
                 random_state += 1
             black_box += 1
 
