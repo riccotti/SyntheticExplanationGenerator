@@ -37,16 +37,20 @@ def generate_img(img_size=(32, 32, 3), cell_size=(4, 4), min_nbr_cells=0.1, max_
     return img
 
 
-def generate_pattern(pattern_size_rows=16, pattern_size_cols=16, cell_size=(4, 4)):
+def generate_pattern(pattern_size_rows=16, pattern_size_cols=16, cell_size=(4, 4), p_border=0.7):
 
     img = generate_img(img_size=(pattern_size_rows, pattern_size_cols, 3),
                        cell_size=cell_size, min_nbr_cells=0.6, max_nbr_cells=0.9,
                        colors_p=np.array([0.15, 0.7, 0.15]))
 
-    img[0:cell_size[0], :] = np.array([0.0, 0.0, 0.0])
-    img[:, 0:cell_size[1]] = np.array([0.0, 0.0, 0.0])
-    img[img.shape[0] - cell_size[0]:img.shape[0], :] = np.array([0.0, 0.0, 0.0])
-    img[:, img.shape[1] - cell_size[1]:img.shape[1]] = np.array([0.0, 0.0, 0.0])
+    if np.random.random() < p_border:
+        img[0:cell_size[0], :] = np.array([0.0, 0.0, 0.0])
+    if np.random.random() < p_border:
+        img[:, 0:cell_size[1]] = np.array([0.0, 0.0, 0.0])
+    if np.random.random() < p_border:
+        img[img.shape[0] - cell_size[0]:img.shape[0], :] = np.array([0.0, 0.0, 0.0])
+    if np.random.random() < p_border:
+        img[:, img.shape[1] - cell_size[1]:img.shape[1]] = np.array([0.0, 0.0, 0.0])
 
     return img
 
@@ -71,13 +75,15 @@ def _predict_index(x, p, cs):
     return None
 
 
-def generate_synthetic_image_classifier(img_size=(32, 32, 3), cell_size=(4, 4), n_features=(16, 16)):
+def generate_synthetic_image_classifier(img_size=(32, 32, 3), cell_size=(4, 4), n_features=(16, 16), p_border=0.7):
     pattern_size_rows, pattern_size_cols = n_features
-    pattern = generate_pattern(pattern_size_rows, pattern_size_cols, cell_size)
+    pattern = generate_pattern(pattern_size_rows, pattern_size_cols, cell_size, p_border)
 
     def predict_proba(X):
         proba = list()
         for x in X:
+            if x.shape != img_size:
+                x = x.reshape(img_size)
             val =_predict(x, pattern, cell_size)
             proba.append(np.array([1.0 - val, val]))
         proba = np.array(proba)
@@ -116,6 +122,9 @@ def generate_random_img_dataset(pattern, nbr_images=1000, pattern_ratio=0.5, img
         img[i:i+pattern.shape[0], j:j+pattern.shape[1]] = pattern
         X_test.append(img)
 
+    X_test = np.array(X_test)
+    # np.random.shuffle(X_test)
+
     return X_test
 
 
@@ -132,7 +141,8 @@ def get_pixel_importance_explanation(x, sic):
         i0, i1, j0, j1 = index
         for i in range(i0, i1):
             for j in range(j0, j1):
-                explanation[i][j] = 1.0
+                if np.sum(x[i][j]) > 0:
+                    explanation[i][j] = 1.0
 
     explanation = explanation.ravel()
     return explanation

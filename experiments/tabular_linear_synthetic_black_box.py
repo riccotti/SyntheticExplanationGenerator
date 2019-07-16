@@ -52,6 +52,8 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
         gt_val = get_feature_importance_explanation(x, slc, n_features, get_values=True)
 
         lime_exp = lime_explainer.explain_instance(x, predict_proba, num_features=m)
+        # lime_exp_as_dict = {e[0]: e[1] for e in lime_exp.as_list()}
+        # lime_expl_val = np.asarray([lime_exp_as_dict.get('x%s' % i, .0) for i in range(m)])
         lime_expl_val = np.array([e[1] for e in lime_exp.as_list()])
 
         shap_expl_val = shap_explainer.shap_values(x, l1_reg='bic')[1]

@@ -10,8 +10,8 @@ import sklearn.preprocessing
 from sklearn.utils import check_random_state
 from skimage.color import gray2rgb
 
-from . import lime_base
-from .wrappers.scikit_image import SegmentationAlgorithm
+import lime_base
+from scikit_image import SegmentationAlgorithm
 
 
 class ImageExplanation(object):
@@ -188,6 +188,10 @@ class LimeImageExplainer(object):
             fudged_image[:] = hide_color
 
         top = labels
+        # import matplotlib.pyplot as plt
+        # from skimage.segmentation import mark_boundaries
+        # plt.imshow(mark_boundaries(image, segments))
+        # plt.show()
 
         data, labels = self.data_labels(image, fudged_image, segments,
                                         classifier_fn, num_samples,
