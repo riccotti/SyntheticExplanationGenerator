@@ -10,7 +10,11 @@ def main():
     n_features = 100
     random_state = 0
 
-    stc = generate_synthetic_text_classifier(n_features=n_features, use_textual_words=True, random_state=random_state)
+    X_train = fetch_20newsgroups(subset='train', remove=('headers', 'footers', 'quotes'), categories=None).data
+    X_train = preprocess_data(X_train)
+
+    stc = generate_synthetic_text_classifier(X_train, n_features=n_features, use_textual_words=True,
+                                             random_state=random_state)
 
     predict = stc['predict']
     predict_proba = stc['predict_proba']
@@ -20,8 +24,7 @@ def main():
 
     # print(words)
 
-    X_test = fetch_20newsgroups(subset='test', remove=('headers', 'footers', 'quotes'),
-                                categories=None).data
+    X_test = fetch_20newsgroups(subset='test', remove=('headers', 'footers', 'quotes'), categories=None).data
     X_test = preprocess_data(X_test)
 
     explainer = LimeTextExplainer(class_names=[0, 1])

@@ -75,9 +75,15 @@ def _predict_index(x, p, cs):
     return None
 
 
-def generate_synthetic_image_classifier(img_size=(32, 32, 3), cell_size=(4, 4), n_features=(16, 16), p_border=0.7):
+def generate_synthetic_image_classifier(img_size=(32, 32, 3), cell_size=(4, 4), n_features=(16, 16), p_border=0.7,
+                                        random_state=None):
+    if random_state:
+        np.random.seed(random_state)
+
     pattern_size_rows, pattern_size_cols = n_features
     pattern = generate_pattern(pattern_size_rows, pattern_size_cols, cell_size, p_border)
+    while np.sum(pattern) == 0:
+        pattern = generate_pattern(pattern_size_rows, pattern_size_cols, cell_size, p_border)
 
     def predict_proba(X):
         proba = list()

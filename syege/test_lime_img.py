@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 
 from lime_image import LimeImageExplainer
 from scikit_image import SegmentationAlgorithm
-from skimage.color import gray2rgb, rgb2gray, label2rgb
 
 from isyege import generate_synthetic_image_classifier
 from isyege import generate_random_img_dataset
@@ -73,18 +72,17 @@ def main():
     # segmenter = SegmentationAlgorithm('slic', n_segments=200, compactness=10, sigma=0, min_size_factor=10)
     # segmenter = SegmentationAlgorithm('felzenszwalb', scale=0.1, sigma=1, min_size=2)
 
-    for x, y in zip(X_test[-1:], Y_test[-1:]):
+    for x, y in zip(X_test[:1], Y_test[:1]):
         print(y)
         # plt.imshow(x)
         # plt.show()
-        exp = explainer.explain_instance(x, predict_proba, top_labels=2, hide_color=127,
+        exp = explainer.explain_instance(x, predict_proba, top_labels=2, hide_color=0,
                                          num_samples=10000, segmentation_fn=segmenter)
-        temp, mask = exp.get_image_and_mask(y, positive_only=True, num_features=1000, hide_rest=False,
-                                                    min_weight=0.0)
-        print(np.unique(temp), 'a')
-        print(np.unique(mask), 'b')
-        print(temp)
-        print(mask)  # usare mask come feature importance
+        temp, mask = exp.get_image_and_mask(y, positive_only=True, num_features=1000, hide_rest=False, min_weight=0.0)
+        # print(np.unique(temp), 'a')
+        # print(np.unique(mask), 'b')
+        # print(temp)
+        # print(mask)  # usare mask come feature importance
 
         max_val = np.nanpercentile(np.abs(mask), 99.9)
         # plt.imshow(x)

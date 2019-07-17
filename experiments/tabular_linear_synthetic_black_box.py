@@ -34,10 +34,10 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
     feature_names = slc['feature_names']
     class_values = slc['class_values']
     predict_proba = slc['predict_proba']
-    predict = slc['predict']
+    # predict = slc['predict']
 
     X_test = np.random.uniform(np.min(X), np.max(X), size=(n, m))
-    Y_test = predict(X_test)
+    Y_test = predict_proba(X_test)[:, 1]
 
     lime_explainer = LimeTabularExplainer(X_test, feature_names=feature_names, class_names=class_values,
                                           discretize_continuous=False, discretizer='entropy')
