@@ -67,7 +67,7 @@ def run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_
         _, lime_expl_val = lime_exp.get_image_and_mask(y, positive_only=True, num_features=tot_num_features,
                                                        hide_rest=False, min_weight=0.0)
 
-        shap_expl_val = shap_explainer.shap_values(x.ravel())[1]
+        shap_expl_val = shap_explainer.shap_values(x.ravel(), l1_reg='bic')[1]
         shap_expl_val = np.sum(np.reshape(shap_expl_val, img_size), axis=2)
         tmp = np.zeros(shap_expl_val.shape)
         tmp[np.where(shap_expl_val > 0.0)] = 1.0
@@ -80,9 +80,9 @@ def run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_
         tmp[np.where(maple_expl_val > 0.0)] = 1.0
         maple_expl_val = tmp
 
-        lime_f1, lime_pre, lime_rec = pixel_based_similarity(lime_expl_val.ravel(), gt_val)
-        shap_f1, shap_pre, shap_rec = pixel_based_similarity(shap_expl_val.ravel(), gt_val)
-        maple_f1, maple_pre, maple_rec = pixel_based_similarity(maple_expl_val.ravel(), gt_val)
+        lime_f1, lime_pre, lime_rec = pixel_based_similarity(lime_expl_val.ravel(), gt_val, ret_pre_rec=True)
+        shap_f1, shap_pre, shap_rec = pixel_based_similarity(shap_expl_val.ravel(), gt_val, ret_pre_rec=True)
+        maple_f1, maple_pre, maple_rec = pixel_based_similarity(maple_expl_val.ravel(), gt_val, ret_pre_rec=True)
 
         res = {
             'black_box': black_box,
@@ -108,10 +108,8 @@ def run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_
         idx += 1
 
     df = pd.DataFrame(data=results)
-    df = df[['black_box', 'n_records', 'nbr_terms', 'n_features', 'random_state', 'idx',
-             'lime_cs', 'lime_f1', 'lime_pre', 'lime_rec',
-             'shap_cs', 'shap_f1', 'shap_pre', 'shap_rec',
-             'maple_cs', 'maple_f1', 'maple_pre', 'maple_rec',
+    df = df[['black_box', 'n_records', 'img_size', 'cell_size', 'n_features', 'random_state', 'idx',
+             'lime_f1', 'lime_pre', 'lime_rec', 'shap_f1', 'shap_pre', 'shap_rec', 'maple_f1', 'maple_pre', 'maple_rec',
              ]]
     # print(df.head())
 
@@ -125,6 +123,7 @@ def main():
 
     n_records = 1000
     n_features_list = [(8, 8), (12, 12), (16, 16), (20, 20), (24, 24), (32, 32)]
+    nbr_test_per_feature = 10
     p_border_list = [0.0, 0.25, 0.5, 0.75, 1.0]
 
     img_size = (32, 32, 3)
@@ -142,7 +141,7 @@ def main():
     black_box = 0
     random_state = 0
     if restart:
-        black_box = restart['black_box'] + 1
+        # black_box = restart['black_box'] + 1
         random_state = restart['random_state'] + 1
     for n_features in n_features_list:
         if restart and n_features < restart['n_features']:
@@ -154,12 +153,18 @@ def main():
             if n_features[0] <= 12 and p_border > 0.0:
                 continue
 
-            print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
-                  'n_features %s' % str(n_features), 'rs %s' % random_state)
-            run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
+            for test_id in range(nbr_test_per_feature):
 
-            random_state += 1
-            black_box += 1
+                if restart and n_features <= restart['n_features'] and black_box < restart['black_box']:
+                    black_box += 1
+                    continue
+
+                print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
+                      'n_features %s' % str(n_features), 'rs %s' % random_state)
+                run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
+
+                random_state += 1
+                black_box += 1
 
 
 if __name__ == "__main__":

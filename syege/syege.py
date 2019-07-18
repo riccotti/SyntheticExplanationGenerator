@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -20,6 +21,10 @@ def generate_syntetic_rule_based_classifier(n_samples=1000, n_features=2, n_all_
                                             sampling=0.5, explore_domain=False):
     X, y = make_classification(n_samples=n_samples, n_features=n_features, n_informative=n_features, n_redundant=0,
                                n_repeated=0, random_state=random_state, n_clusters_per_class=1)
+
+    X0 = copy.deepcopy(X)
+    Y0 = copy.deepcopy(y)
+
     X += factor * np.random.random(size=X.shape)
     X = StandardScaler().fit_transform(X)
     f_min = [X[:, i].min() - sampling*2 for i in range(n_features)]
@@ -36,7 +41,7 @@ def generate_syntetic_rule_based_classifier(n_samples=1000, n_features=2, n_all_
     knn = KNeighborsClassifier(3)
     knn.fit(X, y)
 
-    # Y_new = knn.predict_proba(X_new)[:, 1]
+    Y_new_pp = knn.predict_proba(X_new)[:, 1]
     # Y_new = Y_new.reshape(ff[0].shape)
     # Y_new = Y_new.astype(int)
     Y_new = knn.predict(X_new)
@@ -62,11 +67,14 @@ def generate_syntetic_rule_based_classifier(n_samples=1000, n_features=2, n_all_
         'ff': ff,
         'X': X_new,
         'Y': Y_new,
+        'Ypp': Y_new_pp,
         'feature_names': feature_names,
         'class_name': class_name,
         'class_values': class_values,
         'predict_proba': predict_proba,
-        'predict': predict
+        'predict': predict,
+        'X0': X0,
+        'Y0': Y0,
     }
 
     return srbc
@@ -104,7 +112,8 @@ def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features
                                          p_binary=0.7, p_parenthesis=0.3):
     feature_names = None
     if expr is None:
-        np.random.seed(random_state)
+        if random_state is not None:
+            np.random.seed(random_state)
 
         feature_names = ['x%s' % i for i in range(n_all_features)]
         scope = feature_names[:n_features]
@@ -233,7 +242,6 @@ def main():
     n_features = 3
     random_state = None
 
-    num_operations = 5
     p_binary = 0.7
     p_parenthesis = 0.3
 

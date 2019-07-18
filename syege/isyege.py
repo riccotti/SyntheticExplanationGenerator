@@ -129,7 +129,7 @@ def generate_random_img_dataset(pattern, nbr_images=1000, pattern_ratio=0.5, img
         X_test.append(img)
 
     X_test = np.array(X_test)
-    # np.random.shuffle(X_test)
+    np.random.shuffle(X_test)
 
     return X_test
 
