@@ -37,6 +37,33 @@ def generate_img(img_size=(32, 32, 3), cell_size=(4, 4), min_nbr_cells=0.1, max_
     return img
 
 
+def generate_img_defined(img_draft, img_size=(32, 32, 3), cell_size=(4, 4)):
+    cells_per_edge = (img_size[0] // cell_size[0], img_size[1] // cell_size[1])
+
+    colors = {'r': np.array([1.0, 0.0, 0.0]),
+              'g': np.array([0.0, 1.0, 0.0]),
+              'b': np.array([0.0, 0.0, 1.0]),
+              }
+
+    img = np.zeros(img_size)
+    for i0 in range(img_draft.shape[0]):
+        for j0 in range(img_draft.shape[1]):
+            c = img_draft[i0][j0]
+            if c in colors:
+                val = colors[c]
+                i_from = i0 * cell_size[0]
+                i_to = i_from + cell_size[0]
+
+                j_from = j0 * cell_size[1]
+                j_to = j_from + cell_size[1]
+
+                for i in range(i_from, i_to):
+                    for j in range(j_from, j_to):
+                        img[i][j] = val
+
+    return img
+
+
 def generate_pattern(pattern_size_rows=16, pattern_size_cols=16, cell_size=(4, 4), p_border=0.7):
 
     img = generate_img(img_size=(pattern_size_rows, pattern_size_cols, 3),
@@ -76,14 +103,15 @@ def _predict_index(x, p, cs):
 
 
 def generate_synthetic_image_classifier(img_size=(32, 32, 3), cell_size=(4, 4), n_features=(16, 16), p_border=0.7,
-                                        random_state=None):
+                                        random_state=None, pattern=None):
     if random_state:
         np.random.seed(random_state)
 
     pattern_size_rows, pattern_size_cols = n_features
-    pattern = generate_pattern(pattern_size_rows, pattern_size_cols, cell_size, p_border)
-    while np.sum(pattern) == 0:
+    if pattern is None:
         pattern = generate_pattern(pattern_size_rows, pattern_size_cols, cell_size, p_border)
+        while np.sum(pattern) == 0:
+            pattern = generate_pattern(pattern_size_rows, pattern_size_cols, cell_size, p_border)
 
     def predict_proba(X):
         proba = list()

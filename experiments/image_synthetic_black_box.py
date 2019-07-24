@@ -101,6 +101,7 @@ def run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_
             'maple_f1': maple_f1,
             'maple_pre': maple_pre,
             'maple_rec': maple_rec,
+            'p_border': p_border
         }
         results.append(res)
         print('lime %.2f' % lime_f1, 'shap %.2f' % shap_f1, 'maple %.2f' % maple_f1)
@@ -110,6 +111,7 @@ def run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_
     df = pd.DataFrame(data=results)
     df = df[['black_box', 'n_records', 'img_size', 'cell_size', 'n_features', 'random_state', 'idx',
              'lime_f1', 'lime_pre', 'lime_rec', 'shap_f1', 'shap_pre', 'shap_rec', 'maple_f1', 'maple_pre', 'maple_rec',
+             'p_border'
              ]]
     # print(df.head())
 
@@ -122,7 +124,7 @@ def run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_
 def main():
 
     n_records = 1000
-    n_features_list = [(8, 8), (12, 12), (16, 16), (20, 20), (24, 24), (32, 32)]
+    n_features_list = [(16, 16)]  #[(8, 8), (12, 12), (16, 16), (20, 20), (24, 24), (32, 32)]
     nbr_test_per_feature = 10
     p_border_list = [0.0, 0.25, 0.5, 0.75, 1.0]
 
@@ -131,40 +133,54 @@ def main():
     colors_p = np.array([0.15, 0.7, 0.15])
 
     path = '../results/'
-    filename = path + 'image_synthetic_black_box_new.csv'
+    filename = path + 'image_synthetic_black_box_new2.csv'
 
     restart = None
     if os.path.isfile(filename):
         restart = pd.read_csv(filename).tail(1).to_dict('record')[0]
+        v1, v2 = restart['n_features'].replace('"(', '').replace(')"', '').split(',')
+        restart['n_features'] = (int(v1), int(v2))
         print('restart', restart)
 
-    black_box = 0
-    random_state = 0
-    if restart:
-        # black_box = restart['black_box'] + 1
-        random_state = restart['random_state'] + 1
-    for n_features in n_features_list:
-        if restart and n_features < restart['n_features']:
-            continue
-        for p_border in p_border_list:
-            if restart and n_features <= restart['n_features'] and p_border < restart['p_border']:
-                continue
+    # black_box = 0
+    # random_state = 0
+    # if restart:
+    #     # black_box = restart['black_box'] + 1
+    #     random_state = restart['random_state'] + 1
+    # for n_features in n_features_list:
+    #     if restart and n_features < restart['n_features']:
+    #         continue
+    #     for p_border in p_border_list:
+    #         if restart and n_features <= restart['n_features'] and p_border < restart['p_border']:
+    #             black_box += 10
+    #             continue
+    #
+    #         if n_features[0] <= 12 and p_border > 0.0:
+    #             continue
+    #
+    #         for test_id in range(nbr_test_per_feature):
+    #
+    #             if restart and n_features <= restart['n_features'] and p_border <= restart['p_border'] and black_box < restart['black_box']:
+    #                 black_box += 1
+    #                 continue
+    #
+    #             print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
+    #                   'n_features %s' % str(n_features), 'rs %s' % random_state, 'p_border %s' % p_border,
+    #                   'test_id %s ' % test_id)
+    #             run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
+    #
+    #             random_state += 1
+    #             black_box += 1
 
-            if n_features[0] <= 12 and p_border > 0.0:
-                continue
-
-            for test_id in range(nbr_test_per_feature):
-
-                if restart and n_features <= restart['n_features'] and black_box < restart['black_box']:
-                    black_box += 1
-                    continue
-
-                print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
-                      'n_features %s' % str(n_features), 'rs %s' % random_state)
-                run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
-
-                random_state += 1
-                black_box += 1
+    n_features = (16, 16)
+    random_state = 57
+    black_box = 57
+    p_border = 0.75
+    for test_id in range(7, nbr_test_per_feature):
+        print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
+                  'n_features %s' % str(n_features), 'rs %s' % random_state, 'p_border %s' % p_border,
+                  'test_id %s ' % test_id)
+        run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
 
 
 if __name__ == "__main__":

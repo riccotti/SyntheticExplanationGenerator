@@ -29,12 +29,15 @@ def get_reference4shap(X, words, nbr_terms, nbr_references=10):
     max_nbr_words = np.max(sentences_length)
     words_with_weight = np.where(words != 0)[0]
 
+    ratio_words_over_all = len(set(words_with_weight)) / nbr_terms
+    free_words_ratio = 1.0 - ratio_words_over_all
+
     reference = list()
     for i in range(nbr_references):
         nbr_words_in_sentence = int(np.random.normal(avg_nbr_words, std_nbr_words))
         nbr_words_in_sentence = min(max(nbr_words_in_sentence, min_nbr_words), max_nbr_words)
         selected_words = np.random.choice(range(nbr_terms), size=nbr_words_in_sentence, replace=False)
-        while len(set(selected_words) & set(words_with_weight)) > 0:
+        while len(set(selected_words) & set(words_with_weight)) > ratio_words_over_all * nbr_words_in_sentence:
             nbr_words_in_sentence = min(max(nbr_words_in_sentence, min_nbr_words), max_nbr_words)
             selected_words = np.random.choice(range(nbr_terms), size=nbr_words_in_sentence, replace=False)
 
@@ -64,8 +67,10 @@ def run(black_box, n_records, n_features, random_state, filename):
 
     lime_explainer = LimeTextExplainer(class_names=[0, 1])
 
+    print(datetime.datetime.now(), 'build shap')
     reference = get_reference4shap(X_test_nbrs, stc['words_vec'], nbr_terms, nbr_references=10)
     shap_explainer = KernelExplainer(predict_proba, reference)
+    print(datetime.datetime.now(), 'build shap done')
 
     # print(idx_records_train_expl)
     # print(X_test_nbrs[idx_records_train_expl])
@@ -75,15 +80,15 @@ def run(black_box, n_records, n_features, random_state, filename):
     # print(np.any(np.isnan(Y_test[idx_records_train_expl][:, 1])))
     # print(np.any(np.isnan(Y_test[idx_records_test_expl][:, 1])))
 
-    nbr_records_explainer = 100
+    nbr_records_explainer = 10
     idx_records_train_expl = np.random.choice(range(len(X_test)), size=nbr_records_explainer, replace=False)
     idx_records_test_expl = np.random.choice(range(len(X_test)), size=nbr_records_explainer, replace=False)
 
-    # print(datetime.datetime.now(), 'build maple')
+    print(datetime.datetime.now(), 'build maple')
     maple_explainer = MAPLE(X_test_nbrs[idx_records_train_expl], Y_test[idx_records_train_expl][:, 1],
                             X_test_nbrs[idx_records_test_expl], Y_test[idx_records_test_expl][:, 1],
                             n_estimators=100, max_features=0.5, min_samples_leaf=2)
-    # print(datetime.datetime.now(), 'build maple done')
+    print(datetime.datetime.now(), 'build maple done')
 
     results = list()
     explained = 0
@@ -182,26 +187,34 @@ def main():
         restart = pd.read_csv(filename).tail(1).to_dict('record')[0]
         print('restart', restart)
 
-    black_box = 0
-    if restart:
-        # black_box = restart['black_box'] + 1
-        random_state = restart['random_state'] + 1
-    for n_features in n_features_list:
-        if restart and n_features < restart['n_features']:
-            continue
+    # black_box = 0
+    # if restart:
+    #     # black_box = restart['black_box'] + 1
+    #     random_state = restart['random_state'] + 2
+    # for n_features in n_features_list:
+    #     if restart and n_features < restart['n_features']:
+    #         black_box += 10
+    #         continue
+    #
+    #     for test_id in range(nbr_test_per_feature):
+    #         if restart and n_features <= restart['n_features'] and black_box <= restart['black_box']:
+    #             black_box += 1
+    #             continue
+    #
+    #         print(datetime.datetime.now(), 'seneca - text', 'black_box %s' % black_box,
+    #               'n_features %s' % n_features, 'rs %s' % random_state, 'test_id %s' % test_id)
+    #         run(black_box, n_records, n_features, random_state, filename)
+    #
+    #         random_state += 1
+    #         black_box += 1
 
-        for test_id in range(nbr_test_per_feature):
-
-            if restart and n_features <= restart['n_features'] and black_box < restart['black_box']:
-                black_box += 1
-                continue
-
-            print(datetime.datetime.now(), 'seneca - text', 'black_box %s' % black_box,
-                  'n_features %s' % n_features, 'rs %s' % random_state)
-            run(black_box, n_records, n_features, random_state, filename)
-
-            random_state += 1
-            black_box += 1
+    black_box = 41
+    random_state = 41
+    n_features = 250
+    for test_id in range(1, nbr_test_per_feature):
+        print(datetime.datetime.now(), 'seneca - text', 'black_box %s' % black_box,
+                  'n_features %s' % n_features, 'rs %s' % random_state, 'test_id %s' % test_id)
+        run(black_box, n_records, n_features, random_state, filename)
 
 
 if __name__ == "__main__":

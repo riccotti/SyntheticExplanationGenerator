@@ -30,12 +30,13 @@ def generate_syntetic_rule_based_classifier(n_samples=1000, n_features=2, n_all_
     f_min = [X[:, i].min() - sampling*2 for i in range(n_features)]
     f_max = [X[:, i].max() + sampling*2 for i in range(n_features)]
 
-    ff = np.meshgrid(*[np.arange(f_min[i], f_max[i], sampling) for i in range(n_features)], copy=False)
 
     if explore_domain:
+        ff = np.meshgrid(*[np.arange(f_min[i], f_max[i], sampling) for i in range(n_features)], copy=False)
         values = [ff[i].ravel() for i in range(n_features)]
         X_new = np.c_[values].T
     else:
+        ff = None
         X_new = X
 
     knn = KNeighborsClassifier(3)
