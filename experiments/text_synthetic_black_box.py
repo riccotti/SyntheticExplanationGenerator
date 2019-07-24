@@ -80,7 +80,7 @@ def run(black_box, n_records, n_features, random_state, filename):
     # print(np.any(np.isnan(Y_test[idx_records_train_expl][:, 1])))
     # print(np.any(np.isnan(Y_test[idx_records_test_expl][:, 1])))
 
-    nbr_records_explainer = 10
+    nbr_records_explainer = 100
     idx_records_train_expl = np.random.choice(range(len(X_test)), size=nbr_records_explainer, replace=False)
     idx_records_test_expl = np.random.choice(range(len(X_test)), size=nbr_records_explainer, replace=False)
 
