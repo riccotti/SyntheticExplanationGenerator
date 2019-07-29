@@ -235,41 +235,132 @@ def get_feature_importance_explanation(x, slc, n_features, get_values=True, get_
     return explanation
 
 
+def generate_synthetic_linear_classifier2(n_features=2, n_all_features=2, n_coefficients=2,
+                                          random_state=1, p_sign=0.5):
+
+    if random_state is not None:
+        np.random.seed(random_state)
+
+    feature_names = None
+    m = n_features
+    k = n_coefficients
+    coef_list = set()
+    for i in range(k):
+        m1 = np.random.randint(1, m + 1)
+        coef_idx = np.random.choice(np.arange(m), size=m1, replace=False)
+        coef = np.zeros(m)
+        coef_val = np.array([np.random.choice([-1.0, 1.0], p=[p_sign, 1-p_sign], size=1)[0] * np.random.random()
+                             for _ in range(m1)])
+        coef[coef_idx] = coef_val
+        coef_list.add(tuple(coef))
+    coef_list = np.array([np.array(c) for c in coef_list])
+
+    def predict_proba(X):
+        X = X[:, :n_features]
+        evals_list = list()
+        for x in X:
+            dist = np.abs(np.sum(x * coef_list, axis=1))
+            selected_coef = np.argmax(dist)
+            coef = coef_list[selected_coef]
+            val = np.sum(x * coef)
+            eval = 1.0 if val > 0 else 0.0
+            evals_list.append(np.array([1-eval, eval]))
+        evals_list = np.array(evals_list)
+        return evals_list
+
+    def predict(X):
+        proba = predict_proba(X)
+        return np.argmax(proba, axis=1)
+
+    if feature_names is None:
+        feature_names = ['x%s' % i for i in range(n_all_features)]
+
+    class_name = 'class'
+    class_values = [i for i in range(2)]
+
+    slc = {
+        'feature_names': feature_names,
+        'class_name': class_name,
+        'class_values': class_values,
+        'predict_proba': predict_proba,
+        'predict': predict,
+        'coef_list': coef_list,
+    }
+
+    return slc
+
+
+def get_feature_importance_explanation2(x, slc, n_features, n_all_features, get_values=True):
+
+    x = x[:n_features]
+    coef_list = slc['coef_list']
+
+    dist = np.abs(np.sum(x * coef_list, axis=1))
+    selected_coef = np.argmax(dist)
+    coef = coef_list[selected_coef].tolist()
+
+    explanation = coef
+    if not get_values:
+        explanation = [1 if v != 0 else 0 for v in explanation]
+
+    for i in range(n_features, n_all_features):
+        val = 0.0 if get_values else 0
+        explanation.append(val)
+
+    explanation = np.array(explanation)
+
+    return explanation
+
+
 def main():
 
-    m = 5
+    m = 10
     n = 10
 
-    n_features = 3
+    n_features = 8
     random_state = None
 
-    p_binary = 0.7
-    p_parenthesis = 0.3
+    slc = generate_synthetic_linear_classifier2(n_features, n_all_features=m, n_coefficients=10,
+                                                random_state=random_state, p_sign=0.5)
 
-    slc = generate_synthetic_linear_classifier(n_features=n_features, n_all_features=m, random_state=random_state,
-                                               p_binary=p_binary, p_parenthesis=p_parenthesis)
-
-    # slc = generate_synthetic_linear_classifier(expr='x0**2+x1/2', n_features=n_features, n_all_features=m,
-    #                                            random_state=random_state, num_operations=num_operations,
-    #                                            p_binary=p_binary, p_parenthesis=p_parenthesis)
-
-    expr = slc['expr']
-    print(expr)
-
-    X = slc['X']
-    Y = slc['Y']
-    if slc['feature_names'] is None:
-        slc['feature_names'] = ['x%s' % i for i in range(m)]
-
-    X_test = np.random.uniform(np.min(X), np.max(X), size=(n, m))
-
-    # plt.scatter(X[:, 0], X[:, 1], c=Y)
-    # plt.show()
-
+    X_test = np.random.uniform(size=(n, m))
     for x in X_test:
-        expl_bin = get_feature_importance_explanation(x, slc, n_features, get_values=False)
-        expl_val = get_feature_importance_explanation(x, slc, n_features, get_values=True)
-        print(x, expl_bin, expl_val)
+        expl_bin = get_feature_importance_explanation2(x, slc, n_features, n_all_features=m, get_values=True)
+        expl_val = get_feature_importance_explanation2(x, slc, n_features, n_all_features=m, get_values=False)
+        print(expl_bin, expl_val)
+
+    print('------')
+    print(slc['coef_list'])
+
+    # random_state = None
+    #
+    # p_binary = 0.7
+    # p_parenthesis = 0.3
+    #
+    # slc = generate_synthetic_linear_classifier(n_features=n_features, n_all_features=m, random_state=random_state,
+    #                                            p_binary=p_binary, p_parenthesis=p_parenthesis)
+    #
+    # # slc = generate_synthetic_linear_classifier(expr='x0**2+x1/2', n_features=n_features, n_all_features=m,
+    # #                                            random_state=random_state, num_operations=num_operations,
+    # #                                            p_binary=p_binary, p_parenthesis=p_parenthesis)
+    #
+    # expr = slc['expr']
+    # print(expr)
+    #
+    # X = slc['X']
+    # Y = slc['Y']
+    # if slc['feature_names'] is None:
+    #     slc['feature_names'] = ['x%s' % i for i in range(m)]
+    #
+    # X_test = np.random.uniform(np.min(X), np.max(X), size=(n, m))
+    #
+    # # plt.scatter(X[:, 0], X[:, 1], c=Y)
+    # # plt.show()
+    #
+    # for x in X_test:
+    #     expl_bin = get_feature_importance_explanation(x, slc, n_features, get_values=False)
+    #     expl_val = get_feature_importance_explanation(x, slc, n_features, get_values=True)
+    #     print(x, expl_bin, expl_val)
 
 
     # factor = 10

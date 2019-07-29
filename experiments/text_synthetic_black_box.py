@@ -208,13 +208,24 @@ def main():
     #         random_state += 1
     #         black_box += 1
 
-    black_box = 41
-    random_state = 41
-    n_features = 250
-    for test_id in range(1, nbr_test_per_feature):
+    black_box = 50
+    random_state = 50
+
+    n_features = 500
+    for test_id in range(0, nbr_test_per_feature):
         print(datetime.datetime.now(), 'seneca - text', 'black_box %s' % black_box,
                   'n_features %s' % n_features, 'rs %s' % random_state, 'test_id %s' % test_id)
         run(black_box, n_records, n_features, random_state, filename)
+        random_state += 1
+        black_box += 1
+
+    n_features = 1000
+    for test_id in range(0, nbr_test_per_feature):
+        print(datetime.datetime.now(), 'seneca - text', 'black_box %s' % black_box,
+                  'n_features %s' % n_features, 'rs %s' % random_state, 'test_id %s' % test_id)
+        run(black_box, n_records, n_features, random_state, filename)
+        random_state += 1
+        black_box += 1
 
 
 if __name__ == "__main__":

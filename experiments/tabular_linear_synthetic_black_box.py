@@ -102,10 +102,10 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
 def main():
 
     n_records = 1000
-    n_all_features_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    n_all_features_list = [256]  #[2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
     exp_per_naf = 10
     path = '../results/'
-    filename = path + 'tabular_linear_synthetic_black_box.csv'
+    filename = path + 'tabular_linear_synthetic_black_box_256.csv'
     random_state = 0
     max_attempts = 100
 
@@ -129,8 +129,12 @@ def main():
             n_features_list = [2, 2, 3, 3, 4, 4, 5, 6, 7, 8]
         else:
             gap = n_all_features / exp_per_naf
-            n_features_list = np.around(np.arange(2, n_all_features + 1, gap)).astype(int).tolist()
-            n_features_list[-1] = n_all_features
+            n_features_list_a = np.around(np.arange(2, n_all_features + 1, gap)).astype(int).tolist()
+            # n_features_list[-1] = n_all_features
+            n_features_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+            n_features_list = [x for x in n_features_list if x <= n_all_features]
+            n_features_list.extend(n_features_list_a)
+            n_features_list = sorted(n_features_list)
 
         for n_features in n_features_list:
             if restart and n_all_features <= restart['n_all_features'] and n_features <= restart['n_features']:

@@ -57,7 +57,7 @@ def run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_
     idx = 0
     results = list()
     for x, y in zip(X_test, Y_test):
-        print(datetime.datetime.now(), 'seneca - text', 'black_box %s' % black_box,
+        print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
               'n_features %s' % str(n_features), 'rs %s' % random_state, '%s/%s' % (idx, n_records), end=' ')
 
         gt_val = get_pixel_importance_explanation(x, sic)
@@ -133,7 +133,7 @@ def main():
     colors_p = np.array([0.15, 0.7, 0.15])
 
     path = '../results/'
-    filename = path + 'image_synthetic_black_box_new2.csv'
+    filename = path + 'image_synthetic_black_box_new2_32.csv'
 
     restart = None
     if os.path.isfile(filename):
@@ -172,15 +172,76 @@ def main():
     #             random_state += 1
     #             black_box += 1
 
-    n_features = (16, 16)
-    random_state = 57
-    black_box = 57
-    p_border = 0.75
-    for test_id in range(7, nbr_test_per_feature):
-        print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
+    # 16
+    # n_features = (16, 16)
+    # p_border = 0.75
+    #
+    # random_state = 59
+    # black_box = 59
+    # test_id = 9
+    # print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
+    #       'n_features %s' % str(n_features), 'rs %s' % random_state, 'p_border %s' % p_border,
+    #       'test_id %s ' % test_id)
+    # run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
+    # random_state += 1
+    # black_box += 1
+    #
+    # p_border = 1.0
+    # for test_id in range(0, nbr_test_per_feature):
+    #     print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
+    #           'n_features %s' % str(n_features), 'rs %s' % random_state, 'p_border %s' % p_border,
+    #           'test_id %s ' % test_id)
+    #     run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
+    #     random_state += 1
+    #     black_box += 1
+
+    # n_features = (20, 20)
+    # random_state = 69
+    # black_box = 69
+    # for p_border in p_border_list:
+    #     for test_id in range(0, nbr_test_per_feature):
+    #         print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
+    #               'n_features %s' % str(n_features), 'rs %s' % random_state, 'p_border %s' % p_border,
+    #               'test_id %s ' % test_id)
+    #         run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
+    #         random_state += 1
+    #         black_box += 1
+
+    # n_features = (24, 24)
+    # random_state = 119
+    # black_box = 119
+    # for p_border in p_border_list:
+    #     for test_id in range(0, nbr_test_per_feature):
+    #         print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
+    #               'n_features %s' % str(n_features), 'rs %s' % random_state, 'p_border %s' % p_border,
+    #               'test_id %s ' % test_id)
+    #         run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
+    #         random_state += 1
+    #         black_box += 1
+
+    # n_features = (28, 28)
+    # random_state = 169
+    # black_box = 169
+    # for p_border in p_border_list:
+    #     for test_id in range(0, nbr_test_per_feature):
+    #         print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
+    #               'n_features %s' % str(n_features), 'rs %s' % random_state, 'p_border %s' % p_border,
+    #               'test_id %s ' % test_id)
+    #         run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
+    #         random_state += 1
+    #         black_box += 1
+
+    n_features = (32, 32)
+    random_state = 219
+    black_box = 219
+    for p_border in p_border_list:
+        for test_id in range(0, nbr_test_per_feature):
+            print(datetime.datetime.now(), 'seneca - image', 'black_box %s' % black_box,
                   'n_features %s' % str(n_features), 'rs %s' % random_state, 'p_border %s' % p_border,
                   'test_id %s ' % test_id)
-        run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
+            run(black_box, n_records, img_size, cell_size, n_features, p_border, colors_p, random_state, filename)
+            random_state += 1
+            black_box += 1
 
 
 if __name__ == "__main__":

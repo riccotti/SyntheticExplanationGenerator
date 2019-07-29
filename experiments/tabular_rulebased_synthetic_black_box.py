@@ -86,8 +86,13 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
               '%s/%s' % (idx, n_records), end=' ')
         gt_val = get_rule_explanation(x, srbc, n_features, get_values=False)
 
-        anchor_exp = anchor_explainer.explain_instance(x, predict, threshold=0.95)
-        anchor_expl_val = np.array([1 if e in anchor_exp.features() else 0 for e in range(m)])
+        anchor_flag = True
+        try:
+            anchor_exp = anchor_explainer.explain_instance(x, predict, threshold=0.95)
+            anchor_expl_val = np.array([1 if e in anchor_exp.features() else 0 for e in range(m)])
+        except MemoryError:
+            print(datetime.datetime.now(), 'memoru error anchor')
+            anchor_flag = False
 
         lore_flag = True
         while lore_flag:
@@ -106,7 +111,10 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
         if n_features <= 5:
             sbrl_expl_val = sbrl_explainer.explain(x, m)
 
-        anchor_rbs = rule_based_similarity(anchor_expl_val, gt_val)
+        if anchor_flag:
+            anchor_rbs = rule_based_similarity(anchor_expl_val, gt_val)
+        else:
+            anchor_rbs = -1.0
         lore_rbs = rule_based_similarity(lore_expl_val, gt_val)
 
         if n_features <= 5:
@@ -147,7 +155,7 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
 def main():
 
     n_records = 1000
-    n_all_features_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    n_all_features_list = [128, 256, 512, 1024]  #[2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
     exp_per_naf = 10
     path = '../results/'
     filename = path + 'tabular_rulebased_synthetic_black_box_new.csv'
