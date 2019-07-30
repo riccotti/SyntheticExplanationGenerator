@@ -141,6 +141,18 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
         results.append(res)
         print('anchor %s' % anchor_rbs, 'lore %s' % lore_rbs, 'sbrl %s ' % sbrl_rbs)
 
+        if idx > 0 and idx % 10 == 0:
+            df = pd.DataFrame(data=results)
+            df = df[['black_box', 'n_records', 'n_all_features', 'n_features', 'random_state',
+                     'idx', 'anchor', 'lore', 'sbrl']]
+            # print(df.head())
+
+            if not os.path.isfile(filename):
+                df.to_csv(filename, index=False)
+            else:
+                df.to_csv(filename, mode='a', index=False, header=False)
+            results = list()
+
     df = pd.DataFrame(data=results)
     df = df[['black_box', 'n_records', 'n_all_features', 'n_features', 'random_state',
              'idx', 'anchor', 'lore', 'sbrl']]
@@ -182,8 +194,12 @@ def main():
             n_features_list = [2, 2, 3, 3, 4, 4, 5, 6, 7, 8]
         else:
             gap = n_all_features / exp_per_naf
-            n_features_list = np.around(np.arange(2, n_all_features + 1, gap)).astype(int).tolist()
-            n_features_list[-1] = n_all_features
+            n_features_list_a = np.around(np.arange(2, n_all_features + 1, gap)).astype(int).tolist()
+            # n_features_list[-1] = n_all_features
+            n_features_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+            n_features_list = [x for x in n_features_list if x <= n_all_features]
+            n_features_list.extend(n_features_list_a)
+            n_features_list = sorted(n_features_list)
 
         for n_features in n_features_list:
             if restart and n_all_features <= restart['n_all_features'] and n_features <= restart['n_features']:
