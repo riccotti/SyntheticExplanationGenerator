@@ -167,10 +167,10 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
 def main():
 
     n_records = 1000
-    n_all_features_list = [128, 256, 512, 1024]  #[2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    n_all_features_list = [1024]  #[2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
     exp_per_naf = 10
     path = '../results/'
-    filename = path + 'tabular_rulebased_synthetic_black_box_new.csv'
+    filename = path + 'tabular_rulebased_synthetic_black_box_new_%s.csv' % n_all_features_list[0]
     random_state = 0
     max_attempts = 100
 
@@ -179,27 +179,28 @@ def main():
         restart = pd.read_csv(filename).tail(1).to_dict('record')[0]
         print('restart', restart)
 
-    black_box = 0
+    black_box = n_all_features_list[0]
     if restart:
         black_box = restart['black_box'] + 1
         random_state = restart['random_state'] + 1
     for n_all_features in n_all_features_list:
         if restart and n_all_features < restart['n_all_features']:
             continue
-        if n_all_features == 2:
-            n_features_list = [2] * exp_per_naf
-        elif n_all_features == 4:
-            n_features_list = [2, 2, 2, 2, 3, 3, 3, 4, 4, 4]
-        elif n_all_features == 8:
-            n_features_list = [2, 2, 3, 3, 4, 4, 5, 6, 7, 8]
-        else:
-            gap = n_all_features / exp_per_naf
-            n_features_list_a = np.around(np.arange(2, n_all_features + 1, gap)).astype(int).tolist()
-            # n_features_list[-1] = n_all_features
-            n_features_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
-            n_features_list = [x for x in n_features_list if x <= n_all_features]
-            n_features_list.extend(n_features_list_a)
-            n_features_list = sorted(n_features_list)
+        # if n_all_features == 2:
+        #     n_features_list = [2] * exp_per_naf
+        # elif n_all_features == 4:
+        #     n_features_list = [2, 2, 2, 2, 3, 3, 3, 4, 4, 4]
+        # elif n_all_features == 8:
+        #     n_features_list = [2, 2, 3, 3, 4, 4, 5, 6, 7, 8]
+        # else:
+        #     gap = n_all_features / exp_per_naf
+        #     n_features_list_a = np.around(np.arange(2, n_all_features + 1, gap)).astype(int).tolist()
+        #     # n_features_list[-1] = n_all_features
+        #     n_features_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+        #     n_features_list = [x for x in n_features_list if x <= n_all_features]
+        #     n_features_list.extend(n_features_list_a)
+        #     n_features_list = sorted(n_features_list)
+        n_features_list = [2, 4, 8, 16, 32]
 
         for n_features in n_features_list:
             if restart and n_all_features <= restart['n_all_features'] and n_features <= restart['n_features']:
