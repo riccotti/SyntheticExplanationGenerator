@@ -2,12 +2,12 @@ import numpy as np
 import pandas as pd
 
 from lorem import LOREM
-from datamanager import prepare_dataset
-from util import neuclidean
+from lore_datamanager import prepare_dataset
+from lore_util import neuclidean
 
-from syege import get_rule_explanation
+from syege import get_rule_explanation, get_rule_explanation_complete
 from syege import generate_syntetic_rule_based_classifier
-from evaluation import rule_based_similarity
+from evaluation import rule_based_similarity, rule_based_similarity_complete
 
 
 def main():
@@ -46,16 +46,33 @@ def main():
     for i, x in enumerate(X_test):
         print(x)
         exp = explainer.explain_instance(x, samples=1000, use_weights=True, metric=neuclidean)
+
         expl_val = np.zeros(m).astype(int)
         for c in exp.rule.premises:
             fid = feature_names.index(c.att)
             expl_val[fid] = 1
+
+        exp_dict = dict()
+        for f in feature_names:
+            exp_dict[(f, '<=')] = np.inf
+            exp_dict[(f, '>')] = -np.inf
+        for p in exp.rule.premises:
+            exp_dict[(p.att, p.op)] = p.thr
+
         gt_val = get_rule_explanation(x, srbc, n_features, get_values=False)
+        gt_dict = get_rule_explanation_complete(x, srbc, n_features)
         rbs = rule_based_similarity(expl_val, gt_val)
+        rbsc = rule_based_similarity_complete(exp_dict, gt_dict, eps=0.1)
         print(expl_val)
         print(gt_val)
         print(rbs)
         print('')
+        print(exp_dict)
+        print(gt_dict)
+        print(rbsc)
+        print('----')
+
+
         if i == 10:
             break
 

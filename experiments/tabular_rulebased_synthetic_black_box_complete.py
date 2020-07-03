@@ -18,7 +18,7 @@ from anchor_tabular import AnchorTabularExplainer
 
 from syege import get_rule_explanation_complete
 from syege import generate_syntetic_rule_based_classifier
-from evaluation import rule_based_similarity
+from evaluation import rule_based_similarity_complete
 
 
 sampling_map = {
@@ -113,17 +113,17 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
             lore_expl_dict[(p.att, p.op)] = p.thr
 
         if n_features <= 5:
-            sbrl_expl_val = sbrl_explainer.explain(x, m)
+            sbrl_expl_val, sbrl_exp_dict = sbrl_explainer.explain_ric(x, m)
 
         if anchor_flag:
-            anchor_rbs = rule_based_similarity(anchor_expl_val, gt_dict)
+            anchor_rbs = rule_based_similarity_complete(anchor_expl_val, gt_dict, eps=0.1)
         else:
             anchor_rbs = -1.0
 
-        lore_rbs = rule_based_similarity(lore_expl_dict, gt_dict)
+        lore_rbs = rule_based_similarity_complete(lore_expl_dict, gt_dict, eps=0.1)
 
         if n_features <= 5:
-            sbrl_rbs = rule_based_similarity(sbrl_expl_val, gt_dict)
+            sbrl_rbs = rule_based_similarity_complete(sbrl_exp_dict, gt_dict)
         else:
             sbrl_rbs = -1.0
 
@@ -172,10 +172,11 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
 def main():
 
     n_records = 1000
-    n_all_features_list = [int(sys.argv[1])]  #[2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    # n_all_features_list = [int(sys.argv[1])]  #[2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    n_all_features = int(sys.argv[1])
     exp_per_naf = 10
     path = '../results/'
-    filename = path + 'tabular_rulebased_synthetic_black_box_new_%s_complete.csv' % n_all_features_list[0]
+    filename = path + 'tabular_rulebased_synthetic_black_box_new_%s_complete.csv' % n_all_features
     random_state = 0
     max_attempts = 100
 
@@ -184,11 +185,12 @@ def main():
         restart = pd.read_csv(filename).tail(1).to_dict('record')[0]
         print('restart', restart)
 
-    black_box = n_all_features_list[0]
+    # black_box = n_all_features_list[0]
+    black_box = n_all_features
     if restart:
         black_box = restart['black_box'] + 1
         random_state = restart['random_state'] + 1
-    for n_all_features in n_all_features_list:
+    for n_all_features in [n_all_features]:
         if restart and n_all_features < restart['n_all_features']:
             continue
         # if n_all_features == 2:
@@ -205,7 +207,7 @@ def main():
         #     n_features_list = [x for x in n_features_list if x <= n_all_features]
         #     n_features_list.extend(n_features_list_a)
         #     n_features_list = sorted(n_features_list)
-        n_features_list = [4, 8, 16, 32]
+        n_features_list = [2, 4, 8, 16, 32]
 
         for n_features in n_features_list:
             if restart and n_all_features <= restart['n_all_features'] and n_features <= restart['n_features']:

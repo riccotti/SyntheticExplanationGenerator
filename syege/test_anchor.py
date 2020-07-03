@@ -3,9 +3,9 @@ import numpy as np
 from anchor.anchor_tabular import AnchorTabularExplainer
 
 
-from syege import get_rule_explanation
+from syege import get_rule_explanation, get_rule_explanation_complete
 from syege import generate_syntetic_rule_based_classifier
-from evaluation import rule_based_similarity
+from evaluation import rule_based_similarity, rule_based_similarity_complete
 
 
 def main():
@@ -42,11 +42,18 @@ def main():
         # break
         expl_val = np.array([1 if e in exp.features() else 0 for e in range(m)])
         gt_val = get_rule_explanation(x, srbc, n_features, get_values=False)
+        gt_dict = get_rule_explanation_complete(x, srbc, n_features)
         rbs = rule_based_similarity(expl_val, gt_val)
+        rbsc = rule_based_similarity_complete(exp_dict, gt_dict, eps=0.1)
         print(expl_val)
         print(gt_val)
         print(rbs)
         print('')
+        print(exp_dict)
+        print(gt_dict)
+        print(rbsc)
+        print('----')
+
         if i == 10:
             break
 

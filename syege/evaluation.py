@@ -73,3 +73,28 @@ def pixel_based_similarity(a, b, ret_pre_rec=False):
         return f1, pre, rec
 
     return rule_based_similarity(a, b)
+
+
+def rule_based_similarity_complete(a, b, eps=0.01):
+    score = 0.0
+    features = set(a.keys() | b.keys())
+    den = 0
+    for f in features:
+        default = np.inf if f[1] == '<=' else -np.inf
+
+        v_a = a[f] if f in a else default
+        v_b = b[f] if f in a else default
+
+        if (v_a == v_b and v_a == np.inf) or (v_a == v_b and v_a == -np.inf):
+            continue
+        den += 1
+        if np.abs(v_a - v_b) <= eps:
+            val = 1.0
+        else:
+            val = 0.0
+
+        print(f, v_a, v_b, np.abs(v_a - v_b), val)
+        score += val
+
+    score = score / den
+    return score

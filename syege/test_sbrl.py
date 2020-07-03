@@ -3,9 +3,9 @@ import numpy as np
 from rulematrix import Surrogate
 
 
-from syege import get_rule_explanation
+from syege import get_rule_explanation, get_rule_explanation_complete
 from syege import generate_syntetic_rule_based_classifier
-from evaluation import rule_based_similarity
+from evaluation import rule_based_similarity, rule_based_similarity_complete
 
 
 def main():
@@ -37,13 +37,18 @@ def main():
 
     for i, x in enumerate(X_test):
         print(x)
-        expl_val = explainer.explain(x, m)
+        # expl_val = explainer.explain(x, m)
+        expl_val, exp_dict = explainer.explain_ric(x, m)
         gt_val = get_rule_explanation(x, srbc, n_features, get_values=False)
+        gt_dict = get_rule_explanation_complete(x, srbc, n_features)
         rbs = rule_based_similarity(expl_val, gt_val)
         print(expl_val)
         print(gt_val)
         print(rbs)
         print('')
+        print(exp_dict)
+        print(gt_dict)
+        print('----')
         if i == 10:
             break
 
