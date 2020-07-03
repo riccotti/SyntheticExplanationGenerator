@@ -93,7 +93,7 @@ def rule_based_similarity_complete(a, b, eps=0.01):
         else:
             val = 0.0
 
-        print(f, v_a, v_b, np.abs(v_a - v_b), val)
+        # print(f, v_a, v_b, np.abs(v_a - v_b), val)
         score += val
 
     score = score / den

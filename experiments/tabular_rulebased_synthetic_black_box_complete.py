@@ -116,7 +116,7 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
             sbrl_expl_val, sbrl_exp_dict = sbrl_explainer.explain_ric(x, m)
 
         if anchor_flag:
-            anchor_rbs = rule_based_similarity_complete(anchor_expl_val, gt_dict, eps=0.1)
+            anchor_rbs = rule_based_similarity_complete(anchor_exp_dict, gt_dict, eps=0.1)
         else:
             anchor_rbs = -1.0
 
