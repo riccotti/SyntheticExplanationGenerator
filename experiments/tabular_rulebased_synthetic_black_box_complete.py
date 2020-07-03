@@ -84,7 +84,7 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
         print(datetime.datetime.now(), 'syege - trsb', 'black_box %s' % black_box,
               'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state,
               '%s/%s' % (idx, n_records), end=' ')
-        gt_val = get_rule_explanation(x, srbc, n_features, get_values=False)
+        gt_val = get_rule_explanation(x, srbc, n_features, get_values=True)
 
         anchor_flag = True
         try:
@@ -170,7 +170,7 @@ def main():
     n_all_features_list = [int(sys.argv[1])]  #[2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
     exp_per_naf = 10
     path = '../results/'
-    filename = path + 'tabular_rulebased_synthetic_black_box_new_%s.csv' % n_all_features_list[0]
+    filename = path + 'tabular_rulebased_synthetic_black_box_new_%s_complete.csv' % n_all_features_list[0]
     random_state = 0
     max_attempts = 100
 
