@@ -309,11 +309,32 @@ class AnchorTabularExplainer(object):
         explanation = anchor_explanation.AnchorExplanation('tabular', exp, self.as_html)
         return explanation
 
+    def explain_instance_ric(self, data_row, classifier_fn, threshold=0.95,
+                          delta=0.1, tau=0.15, batch_size=100,
+                          max_anchor_size=None,
+                          desired_label=None,
+                          beam_size=4, **kwargs):
+        # It's possible to pass in max_anchor_size
+        sample_fn, mapping = self.get_sample_fn(
+            data_row, classifier_fn, desired_label=desired_label)
+        # return sample_fn, mapping
+        exp = anchor_base.AnchorBaseBeam.anchor_beam(
+            sample_fn, delta=delta, epsilon=tau, batch_size=batch_size,
+            desired_confidence=threshold, max_anchor_size=max_anchor_size,
+            **kwargs)
+        self.add_names_to_exp(data_row, exp, mapping)
+        exp['instance'] = data_row
+        exp['prediction'] = classifier_fn(self.encoder.transform(data_row.reshape(1, -1)))[0]
+        explanation = anchor_explanation.AnchorExplanation('tabular', exp, self.as_html)
+        exp_dict = exp['exp_dict']
+        return explanation, exp_dict
+
     def add_names_to_exp(self, data_row, hoeffding_exp, mapping):
         # TODO: precision recall is all wrong, coverage functions wont work
         # anymore due to ranges
         idxs = hoeffding_exp['feature']
         hoeffding_exp['names'] = []
+        hoeffding_exp['exp_dict'] = dict()
         hoeffding_exp['feature'] = [mapping[idx][0] for idx in idxs]
         ordinal_ranges = {}
         for idx in idxs:
@@ -325,6 +346,8 @@ class AnchorTabularExplainer(object):
                 ordinal_ranges[f][0] = max(ordinal_ranges[f][0], v)
             if op == 'leq':
                 ordinal_ranges[f][1] = min(ordinal_ranges[f][1], v)
+            hoeffding_exp['exp_dict'][(f, '<=')] = np.inf
+            hoeffding_exp['exp_dict'][(f, '>')] = -np.inf
         handled = set()
         for idx in idxs:
             f, op, v = mapping[idx]
@@ -354,12 +377,14 @@ class AnchorTabularExplainer(object):
                         geq_val = name.split()[0]
                     elif '>' in name:
                         geq_val = name.split()[-1]
+                    hoeffding_exp['exp_dict'][(f, '>')] = float(geq_val)
                 if leq < float('inf'):
                     name = self.categorical_names[f][leq]
                     if leq == 0:
                         leq_val = name.split()[-1]
                     elif '<' in name:
                         leq_val = name.split()[-1]
+                    hoeffding_exp['exp_dict'][(f, '<=')] = float(leq_val)
                 if leq_val and geq_val:
                     fname = '%s < %s <= %s' % (geq_val, self.feature_names[f],
                                                leq_val)

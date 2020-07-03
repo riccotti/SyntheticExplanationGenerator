@@ -16,7 +16,7 @@ from lore_util import neuclidean
 from rulematrix import Surrogate
 from anchor_tabular import AnchorTabularExplainer
 
-from syege import get_rule_explanation
+from syege import get_rule_explanation_complete
 from syege import generate_syntetic_rule_based_classifier
 from evaluation import rule_based_similarity
 
@@ -84,14 +84,15 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
         print(datetime.datetime.now(), 'syege - trsb', 'black_box %s' % black_box,
               'n_all_features %s' % n_all_features, 'n_features %s' % n_features, 'rs %s' % random_state,
               '%s/%s' % (idx, n_records), end=' ')
-        gt_val = get_rule_explanation(x, srbc, n_features, get_values=True)
+        gt_dict = get_rule_explanation_complete(x, srbc, n_features)
 
         anchor_flag = True
         try:
-            anchor_exp = anchor_explainer.explain_instance(x, predict, threshold=0.95)
+            anchor_exp, anchor_exp_dict = anchor_explainer.explain_instance_ric(x, predict, threshold=0.95)
             anchor_expl_val = np.array([1 if e in anchor_exp.features() else 0 for e in range(m)])
+
         except MemoryError:
-            print(datetime.datetime.now(), 'memoru error anchor')
+            print(datetime.datetime.now(), 'memory error anchor')
             anchor_flag = False
 
         lore_flag = True
@@ -103,22 +104,26 @@ def run(black_box, n_records, n_all_features, n_features, random_state, filename
                 print(datetime.datetime.now(), 'retry lore')
                 lore_flag = True
 
-        lore_expl_val = np.zeros(m).astype(int)
-        for c in lore_exp.rule.premises:
-            fid = feature_names.index(c.att)
-            lore_expl_val[fid] = 1
+        lore_expl_dict = dict()
+        for f in feature_names:
+            lore_expl_dict[(f, '<=')] = np.inf
+            lore_expl_dict[(f, '>')] = -np.inf
+
+        for p in lore_exp.rule.premises:
+            lore_expl_dict[(p.att, p.op)] = p.thr
 
         if n_features <= 5:
             sbrl_expl_val = sbrl_explainer.explain(x, m)
 
         if anchor_flag:
-            anchor_rbs = rule_based_similarity(anchor_expl_val, gt_val)
+            anchor_rbs = rule_based_similarity(anchor_expl_val, gt_dict)
         else:
             anchor_rbs = -1.0
-        lore_rbs = rule_based_similarity(lore_expl_val, gt_val)
+
+        lore_rbs = rule_based_similarity(lore_expl_dict, gt_dict)
 
         if n_features <= 5:
-            sbrl_rbs = rule_based_similarity(sbrl_expl_val, gt_val)
+            sbrl_rbs = rule_based_similarity(sbrl_expl_val, gt_dict)
         else:
             sbrl_rbs = -1.0
 

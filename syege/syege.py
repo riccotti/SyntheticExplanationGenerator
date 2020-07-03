@@ -117,24 +117,15 @@ def get_rule_explanation_complete(x, srbc, n_features):
     class_values = srbc['class_values']
     rule = get_rule(x[:n_features], dt, feature_names, class_name, class_values, feature_names)
 
-    explanation = list()
-    rule_premise = defaultdict(float)
+    explanation_dict = dict()
+    for f in feature_names:
+        explanation_dict[(f, '<=')] = np.inf
+        explanation_dict[(f, '>')] = -np.inf
+
     for p in rule.premises:
-        sign = 1 if p.op == '>' else -1
-        val = sign * p.thr
-        rule_premise[p.att] += val
+        explanation_dict[(p.att, p.op)] = p.thr
 
-    for feature in sorted(feature_names):
-        if not get_values:
-            val = 1 if feature in rule_premise else 0
-            explanation.append(val)
-        else:
-            val = rule_premise[feature] if feature in rule_premise else 0.0
-            explanation.append(val)
-
-    explanation = np.array(explanation)
-
-    return explanation
+    return explanation_dict
 
 
 def generate_synthetic_linear_classifier(expr=None, n_features=2, n_all_features=2, random_state=1, n_samples=1000,

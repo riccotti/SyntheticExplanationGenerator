@@ -35,7 +35,11 @@ def main():
 
     for i, x in enumerate(X_test):
         print(x)
-        exp = explainer.explain_instance(x, predict, threshold=0.95)
+        exp, exp_dict = explainer.explain_instance_ric(x, predict, threshold=0.95)
+        # print(exp.features())
+        # print(exp_dict)
+        # print(exp.exp_map['exp_dict'])
+        # break
         expl_val = np.array([1 if e in exp.features() else 0 for e in range(m)])
         gt_val = get_rule_explanation(x, srbc, n_features, get_values=False)
         rbs = rule_based_similarity(expl_val, gt_val)
